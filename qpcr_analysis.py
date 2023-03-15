@@ -20,15 +20,15 @@ working_dir = os.getcwd()
 import pandas as pd
 import sys
 # Check if analysis excel file exist
-if not os.path.exists(os.path.join(working_dir, 'Analysis_test.xlsx')):
+if not os.path.exists(os.path.join(working_dir, 'Analysis.xlsx')):
     sys.exit('Analysis.xlsx not found. Make sure the file is named correctly.')
    
 # Check if the right sheet exist
 from openpyxl import load_workbook
-user_wb = load_workbook('Analysis_test.xlsx', read_only = True)
+user_wb = load_workbook('Analysis.xlsx', read_only = True)
 
 if 'Removed empty wells' in user_wb.sheetnames:
-    data = pd.read_excel('Analysis_test.xlsx', sheet_name='Removed empty wells', engine='openpyxl')
+    data = pd.read_excel('Analysis.xlsx', sheet_name='Removed empty wells', engine='openpyxl')
 else:
     sys.exit('Sheet [Removed empty wells] not found in Analysis.xlsx. Make sure the sheets in your excel workbook are named correctly')
 
@@ -94,7 +94,7 @@ plt.savefig(os.path.join(working_dir, 'qPCR_plots_sorted.pdf'), bbox_inches='tig
 #%% Plot melting curves
 
 if 'Melting curves' in user_wb.sheetnames:
-    df_melting = pd.read_excel('Analysis_test.xlsx', sheet_name='Melting curves', engine='openpyxl')
+    df_melting = pd.read_excel('Analysis.xlsx', sheet_name='Melting curves', engine='openpyxl')
 
     for col in df_melting.columns:
         if col.startswith('Unnamed'):
@@ -135,7 +135,7 @@ else:
 if 'Removed empty wells_compact' not in user_wb.sheetnames:
     sys.exit('Sheet [Removed empty wells_compact] not found in Analysis.xlsx. Make sure the sheets in your excel workbook are named correctly')
     
-df_compact = pd.read_excel('Analysis_test.xlsx', sheet_name='Removed empty wells_compact', engine='openpyxl')
+df_compact = pd.read_excel('Analysis.xlsx', sheet_name='Removed empty wells_compact', engine='openpyxl')
 
 df_Ct = df_compact.iloc[3:3+len(sample_names), 4]
 df_Ct = df_Ct.to_frame()
