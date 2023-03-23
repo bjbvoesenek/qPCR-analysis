@@ -4,33 +4,28 @@ Script for automating the analysis of qPCR data
 
 """
 
-#%% Provide the following parameters
-housekeeping_gene1 = 'GAPDH'
-housekeeping_gene2 = 'Bactin'
+#%% Check user input
 
-
-#%% Get working directory
-import os
-os.chdir('I:/lab-j/Bas/qPCR script')
-working_dir = os.getcwd()
-
+import sys
+input_file = str(sys.argv[1])
+housekeeping_gene1 = str(sys.argv[2])
+housekeeping_gene2 = str(sys.argv[3])
 
 #%% sort and plot
 
 import pandas as pd
-import sys
-# Check if analysis excel file exist
-if not os.path.exists(os.path.join(working_dir, 'Analysis.xlsx')):
-    sys.exit('Analysis.xlsx not found. Make sure the file is named correctly.')
+# Check if input file is an xlsx file
+if not input_file.lower().endswith(('.xlsx')):
+    sys.exit('Input file is not an .xlsx file. Check if you provided the right file.')
    
 # Check if the right sheet exist
 from openpyxl import load_workbook
-user_wb = load_workbook('Analysis.xlsx', read_only = True)
+user_wb = load_workbook(input_file, read_only = True)
 
 if 'Removed empty wells' in user_wb.sheetnames:
-    data = pd.read_excel('Analysis.xlsx', sheet_name='Removed empty wells', engine='openpyxl')
+    data = pd.read_excel(input_file, sheet_name='Removed empty wells', engine='openpyxl')
 else:
-    sys.exit('Sheet [Removed empty wells] not found in Analysis.xlsx. Make sure the sheets in your excel workbook are named correctly')
+    sys.exit('Sheet [Removed empty wells] not found in your input file. Make sure the sheets in your excel workbook are named correctly')
 
 import matplotlib.pyplot as plt
 import math
@@ -89,12 +84,12 @@ for i in range(len(index)):
     ax.set_title(sample_names[index[i]], fontsize = 30)
     name_counter = name_counter + 1
     
-plt.savefig(os.path.join(working_dir, 'qPCR_plots_sorted.pdf'), bbox_inches='tight')
+plt.savefig('qPCR_plots_sorted.pdf', bbox_inches='tight')
 
 #%% Plot melting curves
 
 if 'Melting curves' in user_wb.sheetnames:
-    df_melting = pd.read_excel('Analysis.xlsx', sheet_name='Melting curves', engine='openpyxl')
+    df_melting = pd.read_excel(input_file, sheet_name='Melting curves', engine='openpyxl')
 
     for col in df_melting.columns:
         if col.startswith('Unnamed'):
@@ -126,16 +121,16 @@ if 'Melting curves' in user_wb.sheetnames:
         name_counter = name_counter + 1
         index_number += 1
 
-    plt.savefig(os.path.join(working_dir, 'Melting curves sorted.pdf'), bbox_inches='tight')
+    plt.savefig('Melting curves sorted.pdf', bbox_inches='tight')
 else:
-    print('Sheet [Melting curves] not found in Analysis.xlsx. Continuing to the next step...')
+    print('Sheet [Melting curves] not found in your input file. Continuing to the next step...')
 
 #%% calculate average Ct per condition
 
 if 'Removed empty wells_compact' not in user_wb.sheetnames:
-    sys.exit('Sheet [Removed empty wells_compact] not found in Analysis.xlsx. Make sure the sheets in your excel workbook are named correctly')
+    sys.exit('Sheet [Removed empty wells_compact] not found in your input file. Make sure the sheets in your excel workbook are named correctly')
     
-df_compact = pd.read_excel('Analysis.xlsx', sheet_name='Removed empty wells_compact', engine='openpyxl')
+df_compact = pd.read_excel(input_file, sheet_name='Removed empty wells_compact', engine='openpyxl')
 
 df_Ct = df_compact.iloc[3:3+len(sample_names), 4]
 df_Ct = df_Ct.to_frame()
@@ -208,7 +203,7 @@ for i in range(0,len(unique_primers)):
     plt.ylim(0,40)
     plt.title(unique_primers[i])
 
-plt.savefig(os.path.join(working_dir, 'Average_Ct_bargraph.pdf'), bbox_inches='tight')
+plt.savefig('Average_Ct_bargraph.pdf', bbox_inches='tight')
 
 avg_Ct_df.index = temp_samples
 #avg_Ct_df.to_excel("Avg_Ct_values.xlsx")  
@@ -289,7 +284,7 @@ for i in range(0,len(unique_primers)):
     plt.ylim(0,y_max)
     plt.title(unique_primers[i])
 
-plt.savefig(os.path.join(working_dir, 'Relative_Ct_bargraph.pdf'), bbox_inches='tight')
+plt.savefig('Relative_Ct_bargraph.pdf', bbox_inches='tight')
 
 
 
