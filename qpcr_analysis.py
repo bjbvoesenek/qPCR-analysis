@@ -7,6 +7,8 @@ Script for automating the analysis of qPCR data
 #%% Check user input
 
 import sys
+# input script from web page: python qpcr_analysis.py Analysis.xlsx GAPDH Bactin
+
 input_file = str(sys.argv[1])
 housekeeping_gene1 = str(sys.argv[2])
 housekeeping_gene2 = str(sys.argv[3])
@@ -62,6 +64,7 @@ plt.subplots_adjust(hspace = 0.5, wspace = 0.3)
 nr_primersets = len(unique_primers)
 nr_samples = len(unique_cell_lines)
 nr_replicates = len(sample_names) / nr_samples / nr_primersets
+nr_replicates = int(nr_replicates)
 
 rows = nr_samples
 columns = nr_primersets * nr_replicates
@@ -85,6 +88,7 @@ for i in range(len(index)):
     name_counter = name_counter + 1
     
 plt.savefig('qPCR_plots_sorted.pdf', bbox_inches='tight')
+
 
 #%% Plot melting curves
 
@@ -285,10 +289,6 @@ for i in range(0,len(unique_primers)):
     plt.title(unique_primers[i])
 
 plt.savefig('Relative_Ct_bargraph.pdf', bbox_inches='tight')
-
-
-
-
 
 
 
