@@ -80,6 +80,83 @@ if ($sError) {
         <div class="alert alert-danger" role="alert">' . $sError . '
         </div>' . "\n\n");
     exit;
+
+
+
+} else {
+    // OK, print the form.
+?>
+        <div class="alert alert-info mb-3" role="alert">
+            Please select your input file (.xlsx) and fill in your housekeeping genes.
+            Then, submit the form to start the qPCR analysis.
+            Note, this process will take a while, but should be finished within a minute.
+        </div>
+        <!-- Placeholder for errors. -->
+        <div class="alert alert-danger mb-3 d-none" role="alert"></div>
+
+        <!-- Add novalidate to stop the browser from doing any validation, we want the Bootstrap markup. -->
+        <form action="ajax/forms.php" method="post" class="needs-validation" novalidate>
+            <div class="row mb-2 g-2">
+                <label for="inputFile" class="col-sm-3 col-form-label">Select the file to analyze</label>
+                <div class="col-sm-9">
+                    <input class="form-control" id="inputFile" type="file" name="file" required>
+                    <div class="invalid-feedback">
+                        Please provide a valid Excel sheet, containing the qPCR data.
+                    </div>
+                </div>
+            </div>
+            <div class="row mb-2 g-2">
+                <label for="inputHouseKeeping1" class="col-sm-3 col-form-label">Housekeeping gene #1</label>
+                <div class="col-sm-9">
+                    <input class="form-control" id="inputHouseKeeping1" type="text" name="housekeeping1" placeholder="e.g., GAPDH" required>
+                    <div class="invalid-feedback">
+                        Please provide a valid housekeeping gene, like GAPDH.
+                    </div>
+                </div>
+            </div>
+            <div class="row mb-2 g-2">
+                <label for="inputHouseKeeping2" class="col-sm-3 col-form-label">Housekeeping gene #2</label>
+                <div class="col-sm-9">
+                    <input class="form-control" id="inputHouseKeeping2" type="text" name="housekeeping2" placeholder="e.g., Bactin" required>
+                    <div class="invalid-feedback">
+                        Please provide a valid housekeeping gene, like Bactin.
+                    </div>
+                </div>
+            </div>
+            <div class="row mb-2 g-2">
+                <div class="col-sm-9 offset-sm-3">
+                    <button type="submit" class="btn btn-primary">Submit</button>
+                </div>
+            </div>
+        </form>
+
+        <!-- Javascript that handles everything -->
+        <script type="text/javascript">
+            $(function ()
+            {
+                $("form").submit(
+                    function (e)
+                    {
+                        e.preventDefault();
+                        $(this).addClass("was-validated"); // Enable the Bootstrap annotation of the form.
+
+                        // Only submit if the form is valid (required fields are filled in, etc).
+                        if (this.checkValidity()) {
+                            // Do an additional file type check.
+                            var sFileType = $(this).find("input[type=file]")[0].files[0].type;
+                            if (sFileType != 'application/vnd.ms-excel'
+                                && sFileType != 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet') {
+                                $(this).find("input[type=file]").removeClass("is-valid").addClass("is-invalid");
+                                return false;
+                            }
+                        }
+                    }
+                );
+
+            });
+        </script>
+
+<?php
 }
 ?>
 
