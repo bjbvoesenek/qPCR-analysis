@@ -132,6 +132,8 @@ if ($sError) {
 
         <!-- Javascript that handles everything -->
         <script type="text/javascript">
+            var oModal; // Global scope.
+            var obModal; // Global scope.
             $(function ()
             {
                 $("form").submit(
@@ -149,6 +151,35 @@ if ($sError) {
                                 $(this).find("input[type=file]").removeClass("is-valid").addClass("is-invalid");
                                 return false;
                             }
+
+                            var formData = new FormData(this);
+                            // The call can take a while, if the file is big.
+                            // Better show the modal and run the ajax call only after the modal is shown.
+                            oModal = $("div.modal");
+                            // Fill in the header...
+                            oModal.find(".modal-title").html("Please wait...");
+                            // ... and the body.
+                            oModal.find(".modal-body").html('<div class="text-center"><div class="spinner-border" style="width: 3rem; height: 3rem;" role="status"><span class="visually-hidden">Loading...</span></div></div>');
+
+                            // Now, activate the modal and call the script.
+                            oModal.on('shown.bs.modal', function (e)
+                            {
+                                $.post({
+                                    url: $("form").attr("action") + "?upload",
+                                    data: formData,
+                                    contentType: false, // Required, fails otherwise.
+                                    processData: false, // Required, fails otherwise.
+                                    error: function ()
+                                    {
+                                        oModal.find(".modal-title").html("Error");
+                                        oModal.find(".modal-content").addClass(["border-danger", "bg-danger", "text-white"]);
+                                        oModal.find(".modal-body").html("Failed to submit the data. Please try again later or contact I.F.A.C.Fokkema@LUMC.nl for help.");
+                                        oModal.handleUpdate();
+                                    }
+                                });
+                            });
+                            obModal = bootstrap.Modal.getOrCreateInstance(oModal[0]);
+                            obModal.show();
                         }
                     }
                 );
@@ -163,5 +194,16 @@ if ($sError) {
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-ka7Sk0Gln4gmtz2MlQnikT1wXgYsOg+OMhuP+IlRH9sENBO0LRn5q+8nbTov4+1p" crossorigin="anonymous"></script>
+
+    <div class="modal fade" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"></h5>
+                </div>
+                <div class="modal-body"></div>
+            </div>
+        </div>
+    </div>
 </body>
 </html>
