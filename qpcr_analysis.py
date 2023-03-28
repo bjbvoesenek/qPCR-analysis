@@ -381,6 +381,7 @@ plt.savefig('Primer_efficiency.pdf', bbox_inches='tight')
 
 
 
-
-
+# Indicate a successful ending of the script. The web wrapper requires this, as the script can generate output
+#  that is irrelevant if the script ran successfully.
+sys.exit(0)
 
