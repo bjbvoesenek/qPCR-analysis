@@ -220,4 +220,64 @@ elseif (ACTION == 'process') {
 <?php
     exit;
 }
+
+
+
+
+
+elseif (ACTION == 'download') {
+    // Compress the processed data and trigger the download.
+    $sID = ($_POST['jobID'] ?? '');
+    $sCSRF = ($_POST['csrf_token'] ?? '');
+    if (empty($_SESSION['csrf_tokens']['upload'][$sID])
+        || $_SESSION['csrf_tokens']['upload'][$sID] != $sCSRF) {
+?>
+        oModal.find(".modal-title").html("Error");
+        oModal.find(".modal-content").removeClass(["border-success", "bg-success"]).addClass(["border-danger", "bg-danger", "text-white"]);
+        oModal.find(".modal-body").html("Sorry, there was an error verifying the data. Try reloading the page, and submitting the file again.");
+        oModal.handleUpdate();
+<?php
+        exit;
+    }
+
+    // OK, compress the data.
+    @chdir(DATA_PATH . $sID);
+    $sFile = 'results.zip';
+    @exec(
+        'zip ' . $sFile . ' *',
+        $aOut,
+        $nReturnCode
+    );
+
+    // To check if it worked, we will check the return code and check for the file.
+    $sError = '';
+    if ($nReturnCode !== 0 || !file_exists($sFile)) {
+        $sError = 'Could not create download.';
+?>
+        oModal.find(".modal-title").html("Error");
+        oModal.find(".modal-content").addClass(["border-danger", "bg-danger", "text-white"]);
+        oModal.find(".modal-body").html("Sorry, there was an error processing the data.<BR><?php echo $sError; ?>");
+        oModal.handleUpdate();
+<?php
+        exit;
+    }
+
+    // OK, ready for the next step.
+    $_SESSION['csrf_tokens']['upload'][$sID] = md5(uniqid());
+?>
+    oModal.find(".modal-title").html("Download ready.");
+    oModal.find(".modal-body").html("");
+
+    // Trigger a download of the current file.
+    // This cannot be done directly, because JS is not allowed to download files.
+    // So, here we'll trigger the browser to download the file through an IFRAME.
+    var oIFrame = document.createElement("iframe");
+    oIFrame.style.display = "none";
+
+    // Build URL.
+    oIFrame.src = $("form").attr("action") + "?raw&jobID=<?php echo $sID . '&csrf_token=' . $_SESSION['csrf_tokens']['upload'][$sID]; ?>";
+    $("body").append(oIFrame);
+<?php
+    exit;
+}
 ?>
