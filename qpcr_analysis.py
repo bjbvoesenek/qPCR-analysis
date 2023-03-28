@@ -5,18 +5,23 @@ Script for automating the analysis of qPCR data
 """
 
 #%% Check user input
-
 import sys
 # input script from web page: python qpcr_analysis.py Analysis.xlsx GAPDH Bactin
+
+if len(sys.argv) != 4:
+    sys.exit('Error: Not enough arguments. Three arguments are required.\n Usage: python3 qpcr_analysis.py <input file> <housekeeping gene 1> <housekeeping gene 2>\n Input file          : An .xlsx file saved from LinRegPCR.\n Housekeeping gene 1 : Name of first housekeeping gene.\n Housekeeping gene 2 : Name of second housekeeping gene.')
 
 input_file = str(sys.argv[1])
 housekeeping_gene1 = str(sys.argv[2])
 housekeeping_gene2 = str(sys.argv[3])
 
+    
+    
 #%% sort and plot
 
 import pandas as pd
-# Check if input file is an xlsx file
+import sys
+# Check if analysis excel file exist
 if not input_file.lower().endswith(('.xlsx')):
     sys.exit('Input file is not an .xlsx file. Check if you provided the right file.')
    
@@ -89,7 +94,6 @@ for i in range(len(index)):
     
 plt.savefig('qPCR_plots_sorted.pdf', bbox_inches='tight')
 
-
 #%% Plot melting curves
 
 if 'Melting curves' in user_wb.sheetnames:
@@ -125,7 +129,7 @@ if 'Melting curves' in user_wb.sheetnames:
         name_counter = name_counter + 1
         index_number += 1
 
-    plt.savefig('Melting curves sorted.pdf', bbox_inches='tight')
+    plt.savefig('Melting_curves_sorted.pdf', bbox_inches='tight')
 else:
     print('Sheet [Melting curves] not found in your input file. Continuing to the next step...')
 
@@ -134,7 +138,7 @@ else:
 if 'Removed empty wells_compact' not in user_wb.sheetnames:
     sys.exit('Sheet [Removed empty wells_compact] not found in your input file. Make sure the sheets in your excel workbook are named correctly')
     
-df_compact = pd.read_excel(input_file, sheet_name='Removed empty wells_compact', engine='openpyxl')
+df_compact = pd.read_excel('Analysis.xlsx', sheet_name='Removed empty wells_compact', engine='openpyxl')
 
 df_Ct = df_compact.iloc[3:3+len(sample_names), 4]
 df_Ct = df_Ct.to_frame()
@@ -144,6 +148,37 @@ del df_Ct['index']
 df_Ct = df_Ct.rename(columns={'Chemistry: DNA binding dye (non-saturating' : 'Ct value', 'Sample' : 'Sample'})
 df_Ct['Ct value'] = df_Ct['Ct value'].astype(float)
 
+# Make df with replicates on one row
+replicates_sorted = pd.DataFrame(index=range(nr_samples * nr_primersets),columns=range(nr_replicates + 1))
+row_counter = 0
+
+# Sort data, replicates in the same row
+for i in range(0, len(unique_cell_lines)):
+    for j in range(0, len(unique_primers)):
+        replicate_name = [str(unique_cell_lines[i]), str(unique_primers[j])]
+        replicate_name = '_'.join(replicate_name)
+        replicates_sorted.iloc[row_counter, 0] = replicate_name
+        replicate_df_temp = df_Ct[df_Ct['Sample'] == replicate_name]
+        replicates_sorted.iloc[row_counter, 1:(2+nr_replicates-1)] = replicate_df_temp['Ct value'].tolist()
+        row_counter = row_counter + 1
+        
+## Remove outliers (SD > 0.2)!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!?!?!?!!?!?!?!?!??!??!!?!?!?!?!?!?!?!?!?!??!!?!?!!!
+# outlier_threshold = 1 # times SD
+
+# df_outliers_removed = replicates_sorted.copy()
+
+# for i in range(0,nr_samples * nr_primersets):
+#     # SD per row
+#     temp_sd = df_outliers_removed.iloc[i,1:1+nr_replicates].std()
+#     temp_mean = df_outliers_removed.iloc[i,1:1+nr_replicates].mean()
+#     temp_max = temp_mean + temp_sd * outlier_threshold
+#     temp_min = temp_mean - temp_sd * outlier_threshold
+#     # Check every replicate for outliers
+#     for j in range(1,1+nr_replicates):
+#         if df_outliers_removed.iloc[i,j] > temp_max or df_outliers_removed.iloc[i,j] < temp_min:
+#             df_outliers_removed.iloc[i,j] = None
+        
+# Calculate mean per condition
 Ct_grouped = df_Ct.groupby(['Sample']).mean()
 
 Ct_rownames = Ct_grouped.index
@@ -156,7 +191,7 @@ Ct_grouped.index = Ct_rownames
 Ct_grouped['Index'] = Ct_rownames
 
 # SAVE AVERAGE CT VALUES
-Ct_grouped.to_excel("Avg_Ct_values.xlsx")  
+#Ct_grouped.to_excel("Average_Ct_values.xlsx")  
 
 
 #%% Plot Bargraph
@@ -180,10 +215,9 @@ for i in range(0,len(unique_primers)):
     ax = plt.subplot(size_subplots, size_subplots, subplot_number)
     subplot_number += 1
         
-    temp_df = Ct_grouped[Ct_grouped['Index'].str.contains(unique_primers[i])]
-    temp_values = temp_df['Ct value'].tolist()
-    temp_samples = temp_df.index
-    temp_samples = temp_samples.tolist()
+    temp_df = replicates_sorted[replicates_sorted[0].str.contains(unique_primers[i])]
+    temp_values = temp_df.iloc[:,1:1+nr_replicates].mean(axis=1).tolist()
+    temp_samples = temp_df.iloc[:,0].tolist()
     for j in range(0,len(temp_samples)):
         temp_samples[j] = temp_samples[j].replace('_' + unique_primers[i], "")
         
@@ -202,16 +236,19 @@ for i in range(0,len(unique_primers)):
         else:
             color_list[k] = 'gray'
     
-    plt.bar(temp_samples, temp_values, color=color_list, alpha=0.7)
-    plt.xticks(rotation='vertical')
-    plt.ylim(0,40)
-    plt.title(unique_primers[i])
+    ax.bar(temp_samples, temp_values, color=color_list, alpha=0.7)
+    ax.tick_params(axis='x', labelrotation=90)
+    ax.set_ylim(0,40)
+    ax.set_title(unique_primers[i])
+   
+    for i in range(len(unique_cell_lines)):
+       ax.scatter([i] * nr_replicates, temp_df.iloc[i,1:1+nr_replicates].to_numpy(), marker='o', c='k', s=5)
+       
 
 plt.savefig('Average_Ct_bargraph.pdf', bbox_inches='tight')
 
 avg_Ct_df.index = temp_samples
-#avg_Ct_df.to_excel("Avg_Ct_values.xlsx")  
-
+avg_Ct_df.to_excel("Average_Ct_values.xlsx")  
 
 #%% Calculate relative expression
 
@@ -219,15 +256,24 @@ from statistics import mean
 
 # Initialize dataframe and check if housekeeping genes are in the dataframe
 dCt_df = pd.DataFrame()
+ 
+# Store column names. For analysis, it does not matter whether upper or lower case housekeeping genes is used.
+original_col_names = avg_Ct_df.columns.copy()
+analysis_col_names = avg_Ct_df.columns.str.upper()
+unique_primers_analysis = unique_primers.copy()
+unique_primers_analysis = [x.upper() for x in unique_primers_analysis]
 
-if not housekeeping_gene1 in avg_Ct_df.columns and housekeeping_gene2 in avg_Ct_df.columns:
-    sys.exit('The provided housekeeping genes could not be found in the data. Check if housekeeping genes are named correctly.')
+avg_Ct_df.columns = analysis_col_names
+
+if not housekeeping_gene1.upper() in avg_Ct_df.columns.str.upper() or not housekeeping_gene2.upper() in avg_Ct_df.columns.str.upper():
+    sys.exit('The provided housekeeping genes could not be found in your data. Check if housekeeping genes are named correctly.')
+  
 
 # Subtract housekeeping gene Ct from primer Ct in every row/sample (delta Ct)
 for index, row in avg_Ct_df.iterrows():#dCt_df.iterrows():
     for i in range(0,len(unique_primers)):
-        avg_Ct_housekeeping = mean([avg_Ct_df.loc[index, housekeeping_gene1], avg_Ct_df.loc[index, housekeeping_gene2]])
-        dCt_df.loc[index, unique_primers[i]] = avg_Ct_df.loc[index, unique_primers[i]] - avg_Ct_housekeeping
+        avg_Ct_housekeeping = mean([avg_Ct_df.loc[index, housekeeping_gene1.upper()], avg_Ct_df.loc[index, housekeeping_gene2.upper()]])
+        dCt_df.loc[index, unique_primers_analysis[i]] = avg_Ct_df.loc[index, unique_primers_analysis[i]] - avg_Ct_housekeeping
         
 # Average control lines to calculate ddCt
 control = [i for i in dCt_df.index if i.startswith('FLB') or i.startswith('Control')]
@@ -239,17 +285,18 @@ ddCt_df = pd.DataFrame()
 for i in range(0,len(unique_primers)):
     for index, row in dCt_df.iterrows():
         #ddCt_df.loc[index, unique_primers[i]] = dCt_df.loc['Control average', unique_primers[i]] - dCt_df.loc[index, unique_primers[i]] 
-        ddCt_df.loc[index, unique_primers[i]] = dCt_df.loc[index, unique_primers[i]] - dCt_df.loc['Control average', unique_primers[i]]
+        ddCt_df.loc[index, unique_primers_analysis[i]] = dCt_df.loc[index, unique_primers_analysis[i]] - dCt_df.loc['Control average', unique_primers_analysis[i]]
 
 # Calculate relative ddCt (2^-2ddCt)
 rel_ddCt_df = pd.DataFrame()
 
 for index, row in ddCt_df.iterrows():
     for i in range(0,len(unique_primers)):
-        rel_ddCt_df.loc[index, unique_primers[i]] = 2 ** -(ddCt_df.loc[index, unique_primers[i]])
+        rel_ddCt_df.loc[index, unique_primers_analysis[i]] = 2 ** -(ddCt_df.loc[index, unique_primers_analysis[i]])
 
 # Save relative ddCt values to excel
-rel_ddCt_df.to_excel("Relative ddCq.xlsx")
+rel_ddCt_df.columns = original_col_names
+rel_ddCt_df.to_excel("Relative_expression_values.xlsx")
 
 # Remove H2O sample before plotting
 rel_ddCt_df = rel_ddCt_df.drop('H2O')
@@ -288,7 +335,50 @@ for i in range(0,len(unique_primers)):
     plt.ylim(0,y_max)
     plt.title(unique_primers[i])
 
-plt.savefig('Relative_Ct_bargraph.pdf', bbox_inches='tight')
+plt.savefig('Relative_expression_values.pdf', bbox_inches='tight')
+
+#%% Plot primer efficiency
+
+if 'Removed empty wells_output' not in user_wb.sheetnames:
+    sys.exit('Sheet [Removed empty wells_output] not found in your input file. Make sure the sheets in your excel workbook are named correctly')
+
+df_output = pd.read_excel('Analysis.xlsx', sheet_name='Removed empty wells_output', engine='openpyxl')
+
+df_primer_eff = df_output.iloc[3:3+len(sample_names), 6]
+df_primer_eff = df_primer_eff.to_frame()
+df_primer_eff = df_primer_eff.reset_index()
+df_primer_eff['Sample'] = sample_names
+df_primer_eff['Primer'] = primer_names
+df_primer_eff['Cell_line'] = cell_lines
+del df_primer_eff['index']
+df_primer_eff = df_primer_eff.rename(columns={'Unnamed: 6' : 'Individual primer efficiency', 'Sample' : 'Sample'})
+df_primer_eff['Individual primer efficiency'] = df_primer_eff['Individual primer efficiency'].astype(float)
+df_primer_eff = df_primer_eff[df_primer_eff.Cell_line != 'H2O']
+
+# Make df with primersets per row
+primers_sorted = pd.DataFrame(index=range(nr_primersets),columns=range(nr_replicates * (nr_samples - 1) + 1))
+row_counter = 0
+
+# Sort data, replicates in the same row
+for i in unique_primers:
+    primers_sorted.iloc[row_counter,0] = i
+    primer_df_temp = df_primer_eff[df_primer_eff['Primer'] == i]
+    temp_primer_mean = primer_df_temp['Individual primer efficiency'].mean()
+    primers_sorted.iloc[row_counter, 1:nr_replicates * (nr_samples-1) + 1] = primer_df_temp['Individual primer efficiency'].tolist()
+    primers_sorted.loc[row_counter, 'Mean'] = temp_primer_mean
+    row_counter = row_counter + 1
+    
+# Plot primer efficiency
+fig, ax = plt.subplots()
+ax.bar(unique_primers.tolist(), primers_sorted['Mean'], alpha=0.5)
+ax.tick_params(axis='x', labelrotation=90)
+ax.set_ylim(0,2)
+plt.axhline(y=1.8, color='k', ls='--')
+
+for i in range(len(unique_primers)):
+   ax.scatter([i] * nr_replicates * (nr_samples-1), primers_sorted.iloc[i,1:nr_replicates * (nr_samples-1) + 1].to_numpy(), marker='o', c='k', s=5)
+       
+plt.savefig('Primer_efficiency.pdf', bbox_inches='tight')
 
 
 
