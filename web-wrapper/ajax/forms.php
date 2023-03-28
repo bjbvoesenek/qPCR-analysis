@@ -280,4 +280,47 @@ elseif (ACTION == 'download') {
 <?php
     exit;
 }
+
+
+
+
+
+elseif (ACTION == 'raw') {
+    // Send the raw data.
+    $sID = ($_GET['jobID'] ?? '');
+    $sCSRF = ($_GET['csrf_token'] ?? '');
+    if (empty($_SESSION['csrf_tokens']['upload'][$sID])
+        || $_SESSION['csrf_tokens']['upload'][$sID] != $sCSRF) {
+?>
+        oModal.find(".modal-title").html("Error");
+        oModal.find(".modal-content").removeClass(["border-success", "bg-success"]).addClass(["border-danger", "bg-danger", "text-white"]);
+        oModal.find(".modal-body").html("Sorry, there was an error verifying the data. Try reloading the page, and submitting the file again.");
+        oModal.handleUpdate();
+<?php
+        exit;
+    }
+
+    @chdir(DATA_PATH . $sID);
+    $sFile = 'results.zip';
+    if (!file_exists($sFile)) {
+        $sError = 'Could not fetch download.';
+?>
+        oModal.find(".modal-title").html("Error");
+        oModal.find(".modal-content").addClass(["border-danger", "bg-danger", "text-white"]);
+        oModal.find(".modal-body").html("Sorry, there was an error processing the data.<BR><?php echo $sError; ?>");
+        oModal.handleUpdate();
+<?php
+        exit;
+    }
+
+    // OK, send the file.
+    // Overwrite the JS content type.
+    header('Content-type: application/zip');
+    header('Content-Length: ' . filesize($sFile));
+    header('Content-Disposition: attachment; filename="' . basename($sFile) . '"');
+    header('Pragma: public');
+    header('Last-Modified: ' . gmdate('D, d M Y H:i:s', filemtime($sFile)) . ' GMT');
+    readfile($sFile);
+    exit;
+}
 ?>
