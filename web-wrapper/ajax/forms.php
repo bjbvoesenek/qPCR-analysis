@@ -4,7 +4,7 @@
  * Web wrapper for Bas Voesenek's qPCR analysis script.
  *
  * Created     : 2023-03-23
- * Modified    : 2023-03-27
+ * Modified    : 2023-03-28
  *
  * Copyright   : 2023 Leiden University Medical Center; http://www.LUMC.nl/
  * Programmer  : Ivo F.A.C. Fokkema <I.F.A.C.Fokkema@LUMC.nl>
@@ -50,6 +50,7 @@ if (ACTION == 'upload') {
     }
 
 
+
     // Handle the file uploads.
     // Determine max file upload size in bytes.
     $nMaxSizeLOVD = 5 * 1024 * 1024; // 5MB = our limit.
@@ -79,6 +80,12 @@ if (ACTION == 'upload') {
         // Don't stop processing if that happens.
         // However, when it does report something different, mention what type was found, so we can debug it.
         $sType = mime_content_type($_FILES['file']['tmp_name']);
+        // Handle https://bugs.php.net/bug.php?id=77784.
+        // If the mimetype is a copy of itself, de-duplicate it.
+        $lType = strlen($sType);
+        if ($lType > 100 && !($lType % 2) && substr($sType, 0, $lType / 2) == substr($sType, -($lType / 2))) {
+            $sType = substr($sType, 0, $lType/2);
+        }
         if ($sType
             && !in_array(
                 $sType,
