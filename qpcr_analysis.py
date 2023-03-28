@@ -9,7 +9,7 @@ import sys
 # input script from web page: python qpcr_analysis.py Analysis.xlsx GAPDH Bactin
 
 if len(sys.argv) != 4:
-    sys.exit('Error: Not enough arguments. Three arguments are required.\n Usage: python3 qpcr_analysis.py <input file> <housekeeping gene 1> <housekeeping gene 2>\n Input file          : An .xlsx file saved from LinRegPCR.\n Housekeeping gene 1 : Name of first housekeeping gene.\n Housekeeping gene 2 : Name of second housekeeping gene.')
+    sys.exit('Error: Not enough arguments. Three arguments are required.\n Usage: python3 qpcr_analysis.py <input file> <housekeeping gene 1> <housekeeping gene 2>\n Input file          : An .xlsx file saved from LinRegPCR.\n Housekeeping gene 1 : First housekeeping gene.\n Housekeeping gene 2 : Second housekeeping gene.')
 
 input_file = str(sys.argv[1])
 housekeeping_gene1 = str(sys.argv[2])
@@ -138,7 +138,7 @@ else:
 if 'Removed empty wells_compact' not in user_wb.sheetnames:
     sys.exit('Sheet [Removed empty wells_compact] not found in your input file. Make sure the sheets in your excel workbook are named correctly')
     
-df_compact = pd.read_excel('Analysis.xlsx', sheet_name='Removed empty wells_compact', engine='openpyxl')
+df_compact = pd.read_excel(input_file, sheet_name='Removed empty wells_compact', engine='openpyxl')
 
 df_Ct = df_compact.iloc[3:3+len(sample_names), 4]
 df_Ct = df_Ct.to_frame()
@@ -179,19 +179,16 @@ for i in range(0, len(unique_cell_lines)):
 #             df_outliers_removed.iloc[i,j] = None
         
 # Calculate mean per condition
-Ct_grouped = df_Ct.groupby(['Sample']).mean()
+# Ct_grouped = df_Ct.groupby(['Sample']).mean()
 
-Ct_rownames = Ct_grouped.index
-Ct_rownames = Ct_rownames.tolist()
+# Ct_rownames = Ct_grouped.index
+# Ct_rownames = Ct_rownames.tolist()
 
-for i in range(0,len(Ct_rownames)):
-    Ct_rownames[i] = Ct_rownames[i].replace("input_txt_", "")
+# for i in range(0,len(Ct_rownames)):
+#     Ct_rownames[i] = Ct_rownames[i].replace("input_txt_", "")
 
-Ct_grouped.index = Ct_rownames
-Ct_grouped['Index'] = Ct_rownames
-
-# SAVE AVERAGE CT VALUES
-#Ct_grouped.to_excel("Average_Ct_values.xlsx")  
+# Ct_grouped.index = Ct_rownames
+# Ct_grouped['Index'] = Ct_rownames
 
 
 #%% Plot Bargraph
@@ -221,7 +218,7 @@ for i in range(0,len(unique_primers)):
     for j in range(0,len(temp_samples)):
         temp_samples[j] = temp_samples[j].replace('_' + unique_primers[i], "")
         
-    # Store Ct values per primer in seperate dataframe (later save to excel)
+    # Store Ct values per primer in dataframe (later save to excel)
     avg_Ct_df[unique_primers[i]] = temp_values 
          
     for k in range(0,len(temp_samples)):
@@ -342,7 +339,7 @@ plt.savefig('Relative_expression_values.pdf', bbox_inches='tight')
 if 'Removed empty wells_output' not in user_wb.sheetnames:
     sys.exit('Sheet [Removed empty wells_output] not found in your input file. Make sure the sheets in your excel workbook are named correctly')
 
-df_output = pd.read_excel('Analysis.xlsx', sheet_name='Removed empty wells_output', engine='openpyxl')
+df_output = pd.read_excel(input_file, sheet_name='Removed empty wells_output', engine='openpyxl')
 
 df_primer_eff = df_output.iloc[3:3+len(sample_names), 6]
 df_primer_eff = df_primer_eff.to_frame()
