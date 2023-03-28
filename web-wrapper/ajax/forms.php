@@ -144,4 +144,80 @@ if (ACTION == 'upload') {
 <?php
     exit;
 }
+
+
+
+
+
+elseif (ACTION == 'process') {
+    // Actually process the data.
+    $sID = ($_POST['jobID'] ?? '');
+    $sCSRF = ($_POST['csrf_token'] ?? '');
+    if (empty($_SESSION['csrf_tokens']['upload'][$sID])
+        || $_SESSION['csrf_tokens']['upload'][$sID] != $sCSRF) {
+?>
+        oModal.find(".modal-title").html("Error");
+        oModal.find(".modal-content").addClass(["border-danger", "bg-danger", "text-white"]);
+        oModal.find(".modal-body").html("Sorry, there was an error verifying the data. Try reloading the page, and submitting the file again.");
+        oModal.handleUpdate();
+<?php
+        exit;
+    }
+
+    // OK, run the script.
+    @chdir(DATA_PATH . $sID);
+    // Chose not to complicate this and not to add more tests. The program will fail if we fail here.
+    $sArguments = implode(
+        ' ',
+        array_map(
+            'escapeshellarg',
+            explode(
+                ' ',
+                (string) @file_get_contents('arguments.txt')
+            )
+        )
+    );
+    $aOut = array();
+    @exec(
+        'python3 ../../../qpcr_analysis.py ' . $sArguments . ' 2>&1',
+        $aOut,
+        $nReturnCode
+    );
+    $sOut = implode("\n", $aOut);
+
+    // To check if it worked, we will check the return code.
+    $sError = '';
+    if ($nReturnCode !== 0) {
+        $sError = 'The analysis program reported an error.';
+        if ($aOut) {
+            $sError .= "<BR>" . implode("<BR>", array_map('htmlspecialchars', $aOut));
+        }
+?>
+        oModal.find(".modal-title").html("Error");
+        oModal.find(".modal-content").addClass(["border-danger", "bg-danger", "text-white"]);
+        oModal.find(".modal-body").html("Sorry, there was an error processing the data.<BR><?php echo $sError; ?>");
+        oModal.handleUpdate();
+<?php
+        exit;
+    }
+
+    // OK, ready for the next step.
+    $_SESSION['csrf_tokens']['upload'][$sID] = md5(uniqid());
+?>
+    oModal.find(".modal-title").html("Data successfully processed, preparing your download...");
+    oModal.find(".modal-content").addClass(["border-success", "bg-success", "text-white"]);
+    $.post({
+        url: $("form").attr("action") + "?download",
+        data: {
+            "jobID": "<?php echo $sID; ?>",
+            "csrf_token": "<?php echo $_SESSION['csrf_tokens']['upload'][$sID]; ?>"
+        },
+        error: function ()
+        {
+            alert("Failed to process the data. Please try again later or contact I.F.A.C.Fokkema@LUMC.nl for help and notify him of the job ID: <?php echo $sID; ?>.");
+        }
+    });
+<?php
+    exit;
+}
 ?>
