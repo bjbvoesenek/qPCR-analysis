@@ -106,9 +106,42 @@ if (ACTION == 'upload') {
         oInvalidFeedback = $("form input[type=file]").next(".invalid-feedback");
         oInvalidFeedback.data("ori-html", oInvalidFeedback.html());
         oInvalidFeedback.html("<?php echo addslashes(implode('<BR>', $_ERRORS['file'])) ?>");
+        oModal.handleUpdate();
         obModal.hide();
 <?php
         exit;
     }
+
+    // If we get here, no errors were encountered with the input. Process the file.
+    $sID = str_pad(microtime(true), 15, '0');
+    $b = (@mkdir(DATA_PATH . $sID) && @move_uploaded_file($_FILES['file']['tmp_name'], DATA_PATH . $sID . '/input.xlsx'));
+    if (!$b) {
+?>
+        oModal.find(".modal-title").html("Error");
+        oModal.find(".modal-content").addClass(["border-danger", "bg-danger", "text-white"]);
+        oModal.find(".modal-body").html("Sorry, I couldn't store your input file after I received it. Please try again later or contact I.F.A.C.Fokkema@LUMC.nl for help.");
+        oModal.handleUpdate();
+<?php
+        exit;
+    }
+
+    // OK, ready for the next step.
+    @file_put_contents(DATA_PATH . $sID . '/arguments.txt', 'input.xlsx ' . $_POST['housekeeping1'] . ' ' . $_POST['housekeeping2']);
+    $_SESSION['csrf_tokens']['upload'][$sID] = md5(uniqid());
+?>
+    oModal.find(".modal-title").html("Data successfully received, running the analysis...");
+    $.post({
+        url: $("form").attr("action") + "?process",
+        data: {
+            "jobID": "<?php echo $sID; ?>",
+            "csrf_token": "<?php echo $_SESSION['csrf_tokens']['upload'][$sID]; ?>"
+        },
+        error: function ()
+        {
+            alert("Failed to process the data. Please try again later or contact I.F.A.C.Fokkema@LUMC.nl for help and notify him of the job ID: <?php echo $sID; ?>.");
+        }
+    });
+<?php
+    exit;
 }
 ?>
