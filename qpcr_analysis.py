@@ -212,7 +212,7 @@ for i in range(0,len(unique_primers)):
     ax = plt.subplot(size_subplots, size_subplots, subplot_number)
     subplot_number += 1
         
-    temp_df = replicates_sorted[replicates_sorted[0].str.contains(unique_primers[i])]
+    temp_df = replicates_sorted[replicates_sorted[0].str.partition('_')[2] == unique_primers[i]]
     temp_values = temp_df.iloc[:,1:1+nr_replicates].mean(axis=1).tolist()
     temp_samples = temp_df.iloc[:,0].tolist()
     for j in range(0,len(temp_samples)):
@@ -381,7 +381,6 @@ plt.savefig('Primer_efficiency.pdf', bbox_inches='tight')
 
 
 
-# Indicate a successful ending of the script. The web wrapper requires this, as the script can generate output
-#  that is irrelevant if the script ran successfully.
-sys.exit(0)
+
+
 
