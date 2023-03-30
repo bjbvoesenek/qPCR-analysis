@@ -14,8 +14,6 @@ if len(sys.argv) != 4:
 input_file = str(sys.argv[1])
 housekeeping_gene1 = str(sys.argv[2])
 housekeeping_gene2 = str(sys.argv[3])
-
-    
     
 #%% sort and plot
 
@@ -30,7 +28,7 @@ from openpyxl import load_workbook
 user_wb = load_workbook(input_file, read_only = True)
 
 if 'Removed empty wells' in user_wb.sheetnames:
-    data = pd.read_excel(input_file, sheet_name='Removed empty wells', engine='openpyxl')
+    data = pd.read_excel(input_file, sheet_name='Removed empty wells')
 else:
     sys.exit('Sheet [Removed empty wells] not found in your input file. Make sure the sheets in your excel workbook are named correctly')
 
@@ -97,7 +95,7 @@ plt.savefig('qPCR_plots_sorted.pdf', bbox_inches='tight')
 #%% Plot melting curves
 
 if 'Melting curves' in user_wb.sheetnames:
-    df_melting = pd.read_excel(input_file, sheet_name='Melting curves', engine='openpyxl')
+    df_melting = pd.read_excel(input_file, sheet_name='Melting curves')
 
     for col in df_melting.columns:
         if col.startswith('Unnamed'):
@@ -138,7 +136,7 @@ else:
 if 'Removed empty wells_compact' not in user_wb.sheetnames:
     sys.exit('Sheet [Removed empty wells_compact] not found in your input file. Make sure the sheets in your excel workbook are named correctly')
     
-df_compact = pd.read_excel(input_file, sheet_name='Removed empty wells_compact', engine='openpyxl')
+df_compact = pd.read_excel(input_file, sheet_name='Removed empty wells_compact')
 
 df_Ct = df_compact.iloc[3:3+len(sample_names), 4]
 df_Ct = df_Ct.to_frame()
@@ -239,7 +237,7 @@ for i in range(0,len(unique_primers)):
     ax.set_title(unique_primers[i])
    
     for i in range(len(unique_cell_lines)):
-       ax.scatter([i] * nr_replicates, temp_df.iloc[i,1:1+nr_replicates].to_numpy(), marker='o', c='k', s=5)
+       ax.scatter([i] * nr_replicates, temp_df.iloc[i,1:1+nr_replicates].values.tolist(), marker='o', c='k', s=5)
        
 
 plt.savefig('Average_Ct_bargraph.pdf', bbox_inches='tight')
@@ -339,7 +337,7 @@ plt.savefig('Relative_expression_values.pdf', bbox_inches='tight')
 if 'Removed empty wells_output' not in user_wb.sheetnames:
     sys.exit('Sheet [Removed empty wells_output] not found in your input file. Make sure the sheets in your excel workbook are named correctly')
 
-df_output = pd.read_excel(input_file, sheet_name='Removed empty wells_output', engine='openpyxl')
+df_output = pd.read_excel(input_file, sheet_name='Removed empty wells_output')
 
 df_primer_eff = df_output.iloc[3:3+len(sample_names), 6]
 df_primer_eff = df_primer_eff.to_frame()
@@ -373,7 +371,7 @@ ax.set_ylim(0,2)
 plt.axhline(y=1.8, color='k', ls='--')
 
 for i in range(len(unique_primers)):
-   ax.scatter([i] * nr_replicates * (nr_samples-1), primers_sorted.iloc[i,1:nr_replicates * (nr_samples-1) + 1].to_numpy(), marker='o', c='k', s=5)
+   ax.scatter([i] * nr_replicates * (nr_samples-1), primers_sorted.iloc[i,1:nr_replicates * (nr_samples-1) + 1].values.tolist(), marker='o', c='k', s=5)
        
 plt.savefig('Primer_efficiency.pdf', bbox_inches='tight')
 
