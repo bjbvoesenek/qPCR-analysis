@@ -282,9 +282,11 @@ elseif (ACTION == 'download') {
     $_SESSION['csrf_tokens']['upload'][$sID] = md5(uniqid());
 ?>
     lovd_updateModal({
-        "title": "Download ready.",
-        "body": ""
+        "body": "Download ready."
     });
+    // When we hide the body, it'll look weird, so we keep the body and style it, then hide the header instead.
+    $(oModal).find(".modal-body").addClass("fs-5");
+    $(oModal).find(".modal-header").hide();
 
     // Trigger a download of the current file.
     // This cannot be done directly, because JS is not allowed to download files.
