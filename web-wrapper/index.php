@@ -4,7 +4,7 @@
  * Web wrapper for Bas Voesenek's qPCR analysis script.
  *
  * Created     : 2023-03-22
- * Modified    : 2023-03-27
+ * Modified    : 2023-03-31
  *
  * Copyright   : 2023 Leiden University Medical Center; http://www.LUMC.nl/
  * Programmer  : Ivo F.A.C. Fokkema <I.F.A.C.Fokkema@LUMC.nl>
@@ -185,6 +185,65 @@ if ($sError) {
                 );
 
             });
+
+
+
+            function lovd_updateModal (aOptions = {})
+            {
+                // Function that updates the modal.
+                if (typeof oModal == "undefined") {
+                    return false;
+                }
+
+                if ("size" in aOptions) {
+                    // First, clear the class.
+                    oModal.find(".modal-dialog").attr(
+                        'class',
+                        function(i, sClasses)
+                        {
+                            return sClasses.replace(/(^|\s)modal-[a-z]{2}(\s|$)/g, ' ');
+                        }
+                    );
+                    if (["sm", "lg", "xl"].includes(aOptions.size)) {
+                        oModal.find(".modal-dialog").addClass("modal-" + aOptions.size);
+                    }
+                }
+                if ("title" in aOptions) {
+                    oModal.find(".modal-title").html(aOptions.title);
+                }
+                if ("body" in aOptions) {
+                    oModal.find(".modal-body").html(aOptions.body);
+                }
+                if ("buttons" in aOptions) {
+                    if ($.isArray(aOptions.buttons) && aOptions.buttons.length) {
+                        oModal.find(".modal-footer").html("").removeClass("d-none");
+                        $.each(
+                            aOptions.buttons,
+                            function (i, aButton)
+                            {
+                                if ($.isArray(aButton) && aButton.length > 1) {
+                                    oModal.find(".modal-footer").append('<button type="button" class="btn btn-' + aButton[0] + '">' + aButton[1] + '</button>');
+                                }
+                            }
+                        );
+                    } else if (oModal.find(".modal-footer").html().length) {
+                        oModal.find(".modal-footer").html("").addClass("d-none");
+                    }
+                }
+                if ("classes" in aOptions) {
+                    // First, clear the classes.
+                    oModal.find(".modal-content").attr(
+                        'class',
+                        function(i, sClasses)
+                        {
+                            return sClasses.replace(/(^|\s)(bg|border|text)-[a-z]+/g, '');
+                        }
+                    );
+                    if ($.isArray(aOptions.classes) && aOptions.classes.length) {
+                        oModal.find(".modal-content").addClass(aOptions.classes);
+                    }
+                }
+            }
         </script>
 
 <?php
