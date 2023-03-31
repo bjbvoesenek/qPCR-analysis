@@ -224,6 +224,9 @@ if ($sError) {
                             {
                                 if ($.isArray(aButton) && aButton.length > 1) {
                                     oModal.find(".modal-footer").append('<button type="button" class="btn btn-' + aButton[0] + '">' + aButton[1] + '</button>');
+                                    if (aButton[1] == "Close") {
+                                        oModal.find(".modal-footer button").last().click(function () { obModal.hide(); })
+                                    }
                                 }
                             }
                         );
@@ -262,6 +265,7 @@ if ($sError) {
                     <h5 class="modal-title"></h5>
                 </div>
                 <div class="modal-body"></div>
+                <div class="modal-footer d-none"></div>
             </div>
         </div>
     </div>
