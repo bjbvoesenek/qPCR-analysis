@@ -291,12 +291,9 @@ elseif (ACTION == 'download') {
     // Trigger a download of the current file.
     // This cannot be done directly, because JS is not allowed to download files.
     // So, here we'll trigger the browser to download the file through an IFRAME.
-    var oIFrame = document.createElement("iframe");
-    oIFrame.style.display = "none";
-
-    // Build URL.
-    oIFrame.src = $("form").attr("action") + "?raw&jobID=<?php echo $sID . '&csrf_token=' . $_SESSION['csrf_tokens']['upload'][$sID]; ?>";
-    $("body").append(oIFrame);
+    $("body").append(
+        '<iframe class="d-none" src="' + $("form").attr("action") + '?raw&jobID=<?php echo $sID . '&csrf_token=' . $_SESSION['csrf_tokens']['upload'][$sID]; ?>"></iframe>'
+    );
 <?php
     exit;
 }
