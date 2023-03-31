@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 """
 Script for automating the analysis of qPCR data
-
 """
 
 #%% Check user input
@@ -14,7 +13,8 @@ if len(sys.argv) != 4:
 input_file = str(sys.argv[1])
 housekeeping_gene1 = str(sys.argv[2])
 housekeeping_gene2 = str(sys.argv[3])
-    
+
+   
 #%% sort and plot
 
 import pandas as pd
@@ -220,16 +220,12 @@ for i in range(0,len(unique_primers)):
     avg_Ct_df[unique_primers[i]] = temp_values 
          
     for k in range(0,len(temp_samples)):
-        if temp_samples[k].startswith('Control'):
+        if temp_samples[k] in control:      # Control lines will have gray bars
             color_list[k] = 'gray'
-        if temp_samples[k].startswith('FLB'):
-            color_list[k] = 'gray'
-        if temp_samples[k].startswith('APP'):
-            color_list[k] = 'blue'
-        if temp_samples[k].startswith('H2O'):
+        elif temp_samples[k] == 'H2O':
             color_list[k] = 'green'
-        else:
-            color_list[k] = 'gray'
+        else:                               # Investigated lines will have blue bars
+            color_list[k] = 'royalblue'
     
     ax.bar(temp_samples, temp_values, color=color_list, alpha=0.7)
     ax.tick_params(axis='x', labelrotation=90)
@@ -245,7 +241,7 @@ plt.savefig('Average_Ct_bargraph.pdf', bbox_inches='tight')
 avg_Ct_df.index = temp_samples
 avg_Ct_df.to_excel("Average_Ct_values.xlsx")  
 
-#%% Calculate relative expression
+#%% Calculate relative expression (variable number of housekeeping genes)
 
 from statistics import mean
 
@@ -260,18 +256,20 @@ unique_primers_analysis = [x.upper() for x in unique_primers_analysis]
 
 avg_Ct_df.columns = analysis_col_names
 
-if not housekeeping_gene1.upper() in avg_Ct_df.columns.str.upper() or not housekeeping_gene2.upper() in avg_Ct_df.columns.str.upper():
-    sys.exit('The provided housekeeping genes could not be found in your data. Check if housekeeping genes are named correctly.')
-  
+for gene in housekeeping_genes:
+    if gene.upper() not in avg_Ct_df.columns.str.upper():
+        sys.exit('The provided housekeeping genes could not be found in your data. Check if housekeeping genes are named correctly.') 
 
 # Subtract housekeeping gene Ct from primer Ct in every row/sample (delta Ct)
+housekeeping_genes_upper = [s.upper() for s in housekeeping_genes]
+
 for index, row in avg_Ct_df.iterrows():#dCt_df.iterrows():
     for i in range(0,len(unique_primers)):
-        avg_Ct_housekeeping = mean([avg_Ct_df.loc[index, housekeeping_gene1.upper()], avg_Ct_df.loc[index, housekeeping_gene2.upper()]])
+        avg_Ct_housekeeping = mean(avg_Ct_df.loc[index, housekeeping_genes_upper])
         dCt_df.loc[index, unique_primers_analysis[i]] = avg_Ct_df.loc[index, unique_primers_analysis[i]] - avg_Ct_housekeeping
         
+ 
 # Average control lines to calculate ddCt
-control = [i for i in dCt_df.index if i.startswith('FLB') or i.startswith('Control')]
 dCt_df.loc['Control average'] = dCt_df.loc[control,:].mean()
 
 # subtract dCt of gene of interest from dCt of control average
@@ -314,16 +312,12 @@ for i in range(0,len(unique_primers)):
     
     for j in range(0,len(temp_samples)):
         temp_samples[j] = temp_samples[j].replace('_' + unique_primers[i], "")
-    
+     
     for k in range(0,len(temp_samples)):
-        if temp_samples[k].startswith('Control'):
+        if temp_samples[k] in control or temp_samples[k] == 'Control average':      # Control lines will have gray bars
             color_list[k] = 'gray'
-        if temp_samples[k].startswith('FLB'):
-            color_list[k] = 'gray'
-        if temp_samples[k].startswith('APP'):
+        else:                                                                       # Investigated lines will have blue bars
             color_list[k] = 'royalblue'
-        else:
-            color_list[k] = 'gray'
     
     plt.bar(temp_samples, temp_values, color=color_list, alpha=0.8)
     plt.xticks(rotation='vertical')
@@ -375,10 +369,7 @@ for i in range(len(unique_primers)):
        
 plt.savefig('Primer_efficiency.pdf', bbox_inches='tight')
 
-
-
-
-
-
-
-
+#%% Quit script
+# Indicate a successful ending of the script. The web wrapper requires this, as the script can generate output
+#  that is irrelevant if the script ran successfully.
+sys.exit(0)
