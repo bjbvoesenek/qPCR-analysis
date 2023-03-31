@@ -191,7 +191,7 @@ if ($sError) {
             function lovd_updateModal (aOptions = {})
             {
                 // Function that updates the modal.
-                if (typeof oModal == "undefined") {
+                if (typeof oModal == "undefined" || typeof obModal == "undefined") {
                     return false;
                 }
 
@@ -213,6 +213,7 @@ if ($sError) {
                 }
                 if ("body" in aOptions) {
                     oModal.find(".modal-body").html(aOptions.body);
+                    obModal.handleUpdate();
                 }
                 if ("buttons" in aOptions) {
                     if ($.isArray(aOptions.buttons) && aOptions.buttons.length) {
