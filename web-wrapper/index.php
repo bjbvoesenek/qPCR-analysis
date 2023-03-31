@@ -171,10 +171,11 @@ if ($sError) {
                                     processData: false, // Required, fails otherwise.
                                     error: function ()
                                     {
-                                        oModal.find(".modal-title").html("Error");
-                                        oModal.find(".modal-content").addClass(["border-danger", "bg-danger", "text-white"]);
-                                        oModal.find(".modal-body").html("Failed to submit the data. Please try again later or contact I.F.A.C.Fokkema@LUMC.nl for help.");
-                                        oModal.handleUpdate();
+                                        lovd_updateModal({
+                                            "title": "Error",
+                                            "classes": ["border-danger", "bg-danger", "text-white"],
+                                            "body": "Failed to submit the data. Please try again later or contact I.F.A.C.Fokkema@LUMC.nl for help.",
+                                        })
                                     }
                                 });
                             });
