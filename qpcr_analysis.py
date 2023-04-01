@@ -5,17 +5,29 @@ Script for automating the analysis of qPCR data
 
 #%% Check user input
 import sys
-# input script from web page: python qpcr_analysis.py Analysis.xlsx GAPDH Bactin
+# input to script from web page: python qpcr_analysis.py -input Analysis.xlsx --genes GAPDH Bactin --Control_lines Control1 Control2 FLB240
 
-if len(sys.argv) != 4:
-    sys.exit('Error: Not enough arguments. Three arguments are required.\n Usage: python3 qpcr_analysis.py <input file> <housekeeping gene 1> <housekeeping gene 2>\n Input file          : An .xlsx file saved from LinRegPCR.\n Housekeeping gene 1 : First housekeeping gene.\n Housekeeping gene 2 : Second housekeeping gene.')
+import argparse
+parser = argparse.ArgumentParser(description='Automated analysis of LinRegPCR')
+parser.add_argument('-input', action='store', nargs=1)
+parser.add_argument('--genes', action='store', nargs='*')
+parser.add_argument('--Control_lines', action='store', nargs='*')
+    
+args = vars(parser.parse_args())
 
-input_file = str(sys.argv[1])
-housekeeping_gene1 = str(sys.argv[2])
-housekeeping_gene2 = str(sys.argv[3])
+if len(args) != 3:
+    sys.exit('Error: wrong number of arguments. First provide the Excel file to be analyzed. Then, select housekeeping genes and control (normalizer) lines on the web-interface.')
+else:
+    if args['genes'] == None and args['Control_lines'] == None:
+        script_goal = 'Isolate_genes_cells'
+        input_file = args['input'][0]
+    else:
+        script_goal = 'Complete_analysis'
+        input_file = args['input'][0]
+        housekeeping_genes =args['genes']
+        control = args['Control_lines']
 
-   
-#%% sort and plot
+#%% Find unique primers and cell lines
 
 import pandas as pd
 import sys
@@ -53,6 +65,24 @@ for n in range(0,len(primer_names)):
     cell_lines[n] = cell_lines[n].partition('_')[0]
 unique_primers = primer_names.unique()
 unique_cell_lines = cell_lines.unique()
+
+#%% Store names of cell lines and primers in .txt files if user only provides Excel sheet
+
+if script_goal == 'Isolate_genes_cells':
+    # Save names of used cell lines in .txt file
+    sorted_unique_cell_lines = natsorted(unique_cell_lines)
+    with open("Cell_lines.txt", "w") as txt_file:
+        for line in sorted_unique_cell_lines:
+            txt_file.write(line + "\n") 
+    
+    # Save names of used cell lines in .txt file
+    sorted_unique_primers = natsorted(unique_primers)
+    with open("Genes.txt", "w") as txt_file:
+        for line in sorted_unique_primers:
+            txt_file.write(line + "\n")
+    
+    # Exit script. User now has to select housekeeping genes and control cell lines in web-interface
+    sys.exit(0)
 
 x = range(0, data.shape[1] - 1)
 
