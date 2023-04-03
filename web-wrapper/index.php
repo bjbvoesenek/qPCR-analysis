@@ -4,7 +4,7 @@
  * Web wrapper for Bas Voesenek's qPCR analysis script.
  *
  * Created     : 2023-03-22
- * Modified    : 2023-03-27
+ * Modified    : 2023-03-31
  *
  * Copyright   : 2023 Leiden University Medical Center; http://www.LUMC.nl/
  * Programmer  : Ivo F.A.C. Fokkema <I.F.A.C.Fokkema@LUMC.nl>
@@ -171,10 +171,11 @@ if ($sError) {
                                     processData: false, // Required, fails otherwise.
                                     error: function ()
                                     {
-                                        oModal.find(".modal-title").html("Error");
-                                        oModal.find(".modal-content").addClass(["border-danger", "bg-danger", "text-white"]);
-                                        oModal.find(".modal-body").html("Failed to submit the data. Please try again later or contact I.F.A.C.Fokkema@LUMC.nl for help.");
-                                        oModal.handleUpdate();
+                                        lovd_updateModal({
+                                            "title": "Error",
+                                            "classes": ["border-danger", "bg-danger", "text-white"],
+                                            "body": "Failed to submit the data. Please try again later or contact I.F.A.C.Fokkema@LUMC.nl for help.",
+                                        })
                                     }
                                 });
                             });
@@ -185,6 +186,69 @@ if ($sError) {
                 );
 
             });
+
+
+
+            function lovd_updateModal (aOptions = {})
+            {
+                // Function that updates the modal.
+                if (typeof oModal == "undefined" || typeof obModal == "undefined") {
+                    return false;
+                }
+
+                if ("size" in aOptions) {
+                    // First, clear the class.
+                    oModal.find(".modal-dialog").attr(
+                        'class',
+                        function(i, sClasses)
+                        {
+                            return sClasses.replace(/(^|\s)modal-[a-z]{2}(\s|$)/g, ' ');
+                        }
+                    );
+                    if (["sm", "lg", "xl"].includes(aOptions.size)) {
+                        oModal.find(".modal-dialog").addClass("modal-" + aOptions.size);
+                    }
+                }
+                if ("title" in aOptions) {
+                    oModal.find(".modal-title").html(aOptions.title);
+                }
+                if ("body" in aOptions) {
+                    oModal.find(".modal-body").html(aOptions.body);
+                    obModal.handleUpdate();
+                }
+                if ("buttons" in aOptions) {
+                    if ($.isArray(aOptions.buttons) && aOptions.buttons.length) {
+                        oModal.find(".modal-footer").html("").removeClass("d-none");
+                        $.each(
+                            aOptions.buttons,
+                            function (i, aButton)
+                            {
+                                if ($.isArray(aButton) && aButton.length > 1) {
+                                    oModal.find(".modal-footer").append('<button type="button" class="btn btn-' + aButton[0] + '">' + aButton[1] + '</button>');
+                                    if (aButton[1] == "Close") {
+                                        oModal.find(".modal-footer button").last().click(function () { obModal.hide(); })
+                                    }
+                                }
+                            }
+                        );
+                    } else if (oModal.find(".modal-footer").html().length) {
+                        oModal.find(".modal-footer").html("").addClass("d-none");
+                    }
+                }
+                if ("classes" in aOptions) {
+                    // First, clear the classes.
+                    oModal.find(".modal-content").attr(
+                        'class',
+                        function(i, sClasses)
+                        {
+                            return sClasses.replace(/(^|\s)(bg|border|text)-[a-z]+/g, '');
+                        }
+                    );
+                    if ($.isArray(aOptions.classes) && aOptions.classes.length) {
+                        oModal.find(".modal-content").addClass(aOptions.classes);
+                    }
+                }
+            }
         </script>
 
 <?php
@@ -202,6 +266,7 @@ if ($sError) {
                     <h5 class="modal-title"></h5>
                 </div>
                 <div class="modal-body"></div>
+                <div class="modal-footer d-none"></div>
             </div>
         </div>
     </div>

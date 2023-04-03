@@ -4,7 +4,7 @@
  * Web wrapper for Bas Voesenek's qPCR analysis script.
  *
  * Created     : 2023-03-23
- * Modified    : 2023-03-28
+ * Modified    : 2023-03-31
  *
  * Copyright   : 2023 Leiden University Medical Center; http://www.LUMC.nl/
  * Programmer  : Ivo F.A.C. Fokkema <I.F.A.C.Fokkema@LUMC.nl>
@@ -106,7 +106,6 @@ if (ACTION == 'upload') {
         oInvalidFeedback = $("form input[type=file]").next(".invalid-feedback");
         oInvalidFeedback.data("ori-html", oInvalidFeedback.html());
         oInvalidFeedback.html("<?php echo addslashes(implode('<BR>', $_ERRORS['file'])) ?>");
-        oModal.handleUpdate();
         obModal.hide();
 <?php
         exit;
@@ -117,10 +116,11 @@ if (ACTION == 'upload') {
     $b = (@mkdir(DATA_PATH . $sID) && @move_uploaded_file($_FILES['file']['tmp_name'], DATA_PATH . $sID . '/input.xlsx'));
     if (!$b) {
 ?>
-        oModal.find(".modal-title").html("Error");
-        oModal.find(".modal-content").addClass(["border-danger", "bg-danger", "text-white"]);
-        oModal.find(".modal-body").html("Sorry, I couldn't store your input file after I received it. Please try again later or contact I.F.A.C.Fokkema@LUMC.nl for help.");
-        oModal.handleUpdate();
+        lovd_updateModal({
+            "title": "Error",
+            "classes": ["border-danger", "bg-danger", "text-white"],
+            "body": "Sorry, I couldn't store your input file after I received it. Please try again later or contact I.F.A.C.Fokkema@LUMC.nl for help."
+        });
 <?php
         exit;
     }
@@ -129,7 +129,9 @@ if (ACTION == 'upload') {
     @file_put_contents(DATA_PATH . $sID . '/arguments.txt', 'input.xlsx ' . $_POST['housekeeping1'] . ' ' . $_POST['housekeeping2']);
     $_SESSION['csrf_tokens']['upload'][$sID] = md5(uniqid());
 ?>
-    oModal.find(".modal-title").html("Data successfully received, running the analysis...");
+    lovd_updateModal({
+        "title": "Data successfully received, running the analysis..."
+    });
     $.post({
         url: $("form").attr("action") + "?process",
         data: {
@@ -138,7 +140,11 @@ if (ACTION == 'upload') {
         },
         error: function ()
         {
-            alert("Failed to process the data. Please try again later or contact I.F.A.C.Fokkema@LUMC.nl for help and notify him of the job ID: <?php echo $sID; ?>.");
+            lovd_updateModal({
+                "title": "Error",
+                "classes": ["border-danger", "bg-danger", "text-white"],
+                "body": "Failed to request the processing of the data. Please try again later or contact I.F.A.C.Fokkema@LUMC.nl for help and notify him of the job ID: <?php echo $sID; ?>."
+            });
         }
     });
 <?php
@@ -156,10 +162,11 @@ elseif (ACTION == 'process') {
     if (empty($_SESSION['csrf_tokens']['upload'][$sID])
         || $_SESSION['csrf_tokens']['upload'][$sID] != $sCSRF) {
 ?>
-        oModal.find(".modal-title").html("Error");
-        oModal.find(".modal-content").addClass(["border-danger", "bg-danger", "text-white"]);
-        oModal.find(".modal-body").html("Sorry, there was an error verifying the data. Try reloading the page, and submitting the file again.");
-        oModal.handleUpdate();
+        lovd_updateModal({
+            "title": "Error",
+            "classes": ["border-danger", "bg-danger", "text-white"],
+            "body": "Sorry, there was an error verifying the data. Try reloading the page, and submitting the file again."
+        });
 <?php
         exit;
     }
@@ -193,10 +200,11 @@ elseif (ACTION == 'process') {
             $sError .= "<BR>" . implode("<BR>", array_map('htmlspecialchars', $aOut));
         }
 ?>
-        oModal.find(".modal-title").html("Error");
-        oModal.find(".modal-content").addClass(["border-danger", "bg-danger", "text-white"]);
-        oModal.find(".modal-body").html("Sorry, there was an error processing the data.<BR><?php echo $sError; ?>");
-        oModal.handleUpdate();
+        lovd_updateModal({
+            "title": "Error",
+            "classes": ["border-danger", "bg-danger", "text-white"],
+            "body": "Sorry, there was an error processing the data.<BR><?php echo $sError; ?>"
+        });
 <?php
         exit;
     }
@@ -204,8 +212,10 @@ elseif (ACTION == 'process') {
     // OK, ready for the next step.
     $_SESSION['csrf_tokens']['upload'][$sID] = md5(uniqid());
 ?>
-    oModal.find(".modal-title").html("Data successfully processed, preparing your download...");
-    oModal.find(".modal-content").addClass(["border-success", "bg-success", "text-white"]);
+    lovd_updateModal({
+        "title": "Data successfully processed, preparing your download...",
+        "classes": ["border-success", "bg-success", "text-white"]
+    });
     $.post({
         url: $("form").attr("action") + "?download",
         data: {
@@ -214,7 +224,11 @@ elseif (ACTION == 'process') {
         },
         error: function ()
         {
-            alert("Failed to process the data. Please try again later or contact I.F.A.C.Fokkema@LUMC.nl for help and notify him of the job ID: <?php echo $sID; ?>.");
+            lovd_updateModal({
+                "title": "Error",
+                "classes": ["border-danger", "bg-danger", "text-white"],
+                "body": "Failed to request the preparation of the download. Please try again later or contact I.F.A.C.Fokkema@LUMC.nl for help and notify him of the job ID: <?php echo $sID; ?>."
+            });
         }
     });
 <?php
@@ -232,10 +246,11 @@ elseif (ACTION == 'download') {
     if (empty($_SESSION['csrf_tokens']['upload'][$sID])
         || $_SESSION['csrf_tokens']['upload'][$sID] != $sCSRF) {
 ?>
-        oModal.find(".modal-title").html("Error");
-        oModal.find(".modal-content").removeClass(["border-success", "bg-success"]).addClass(["border-danger", "bg-danger", "text-white"]);
-        oModal.find(".modal-body").html("Sorry, there was an error verifying the data. Try reloading the page, and submitting the file again.");
-        oModal.handleUpdate();
+        lovd_updateModal({
+            "title": "Error",
+            "classes": ["border-danger", "bg-danger", "text-white"],
+            "body": "Sorry, there was an error verifying the data. Try reloading the page, and submitting the file again."
+        });
 <?php
         exit;
     }
@@ -254,10 +269,11 @@ elseif (ACTION == 'download') {
     if ($nReturnCode !== 0 || !file_exists($sFile)) {
         $sError = 'Could not create download.';
 ?>
-        oModal.find(".modal-title").html("Error");
-        oModal.find(".modal-content").addClass(["border-danger", "bg-danger", "text-white"]);
-        oModal.find(".modal-body").html("Sorry, there was an error processing the data.<BR><?php echo $sError; ?>");
-        oModal.handleUpdate();
+        lovd_updateModal({
+            "title": "Error",
+            "classes": ["border-danger", "bg-danger", "text-white"],
+            "body": "Sorry, there was an error preparing the download.<BR><?php echo $sError; ?>"
+        });
 <?php
         exit;
     }
@@ -265,18 +281,19 @@ elseif (ACTION == 'download') {
     // OK, ready for the next step.
     $_SESSION['csrf_tokens']['upload'][$sID] = md5(uniqid());
 ?>
-    oModal.find(".modal-title").html("Download ready.");
-    oModal.find(".modal-body").html("");
+    lovd_updateModal({
+        "body": "Download ready."
+    });
+    // When we hide the body, it'll look weird, so we keep the body and style it, then hide the header instead.
+    $(oModal).find(".modal-body").addClass("fs-5");
+    $(oModal).find(".modal-header").hide();
 
     // Trigger a download of the current file.
     // This cannot be done directly, because JS is not allowed to download files.
     // So, here we'll trigger the browser to download the file through an IFRAME.
-    var oIFrame = document.createElement("iframe");
-    oIFrame.style.display = "none";
-
-    // Build URL.
-    oIFrame.src = $("form").attr("action") + "?raw&jobID=<?php echo $sID . '&csrf_token=' . $_SESSION['csrf_tokens']['upload'][$sID]; ?>";
-    $("body").append(oIFrame);
+    $("body").append(
+        '<iframe class="d-none" src="' + $("form").attr("action") + '?raw&jobID=<?php echo $sID . '&csrf_token=' . $_SESSION['csrf_tokens']['upload'][$sID]; ?>"></iframe>'
+    );
 <?php
     exit;
 }
@@ -292,10 +309,11 @@ elseif (ACTION == 'raw') {
     if (empty($_SESSION['csrf_tokens']['upload'][$sID])
         || $_SESSION['csrf_tokens']['upload'][$sID] != $sCSRF) {
 ?>
-        oModal.find(".modal-title").html("Error");
-        oModal.find(".modal-content").removeClass(["border-success", "bg-success"]).addClass(["border-danger", "bg-danger", "text-white"]);
-        oModal.find(".modal-body").html("Sorry, there was an error verifying the data. Try reloading the page, and submitting the file again.");
-        oModal.handleUpdate();
+        lovd_updateModal({
+            "title": "Error",
+            "classes": ["border-danger", "bg-danger", "text-white"],
+            "body": "Sorry, there was an error verifying the data. Try reloading the page, and submitting the file again."
+        });
 <?php
         exit;
     }
@@ -305,10 +323,11 @@ elseif (ACTION == 'raw') {
     if (!file_exists($sFile)) {
         $sError = 'Could not fetch download.';
 ?>
-        oModal.find(".modal-title").html("Error");
-        oModal.find(".modal-content").addClass(["border-danger", "bg-danger", "text-white"]);
-        oModal.find(".modal-body").html("Sorry, there was an error processing the data.<BR><?php echo $sError; ?>");
-        oModal.handleUpdate();
+        lovd_updateModal({
+            "title": "Error",
+            "classes": ["border-danger", "bg-danger", "text-white"],
+            "body": "Sorry, there was an error sending the data.<BR><?php echo $sError; ?>"
+        });
 <?php
         exit;
     }
