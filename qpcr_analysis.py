@@ -5,7 +5,7 @@ Script for automating the analysis of qPCR data
 
 #%% Check user input
 import sys
-# input to script from web page: python qpcr_analysis.py -input Analysis.xlsx --genes GAPDH Bactin --controls Control1 Control2 FLB240
+# input to script from web page: python qpcr_analysis.py --input Analysis.xlsx --genes GAPDH Bactin --controls Control1 Control2 FLB240
 
 import argparse
 parser = argparse.ArgumentParser(description='Automated analysis of LinRegPCR')
@@ -16,17 +16,19 @@ parser.add_argument('--controls', action='store', nargs='*')
 args = vars(parser.parse_args())
 
 if args['input'] == None:
-    sys.exit('Error: wrong number of arguments. First provide the Excel file to be analyzed. Then, select housekeeping genes and control (normalizer) lines on the web-interface.')
+    print('Error: No input file given. Provide the Excel file to be analyzed using --input.\n')
+    sys.exit(1)
 else:
     if args['genes'] == None and args['controls'] == None:
         script_goal = 'Isolate_genes_cells'
         input_file = args['input'][0]
     elif args['genes'] == None or len(args['genes']) == 0 or args['controls'] == None or len(args['controls']) == 0:
-        sys.exit('Error: wrong  number of arguments. Provide the Excel file to be analysed only or provide the Excel file to be analyzed together with housekeeping genes and control lines')
+        print('Error: Wrong number of arguments. Provide the Excel file to be analysed only, or provide the Excel file to be analyzed together with housekeeping genes (--genes) and control lines (--controls).\n')
+        sys.exit(2)
     else:
         script_goal = 'Complete_analysis'
         input_file = args['input'][0]
-        housekeeping_genes =args['genes']
+        housekeeping_genes = args['genes']
         control = args['controls']
 
 #%% Find unique primers and cell lines
@@ -34,8 +36,9 @@ else:
 import pandas as pd
 # Check if analysis excel file exist
 if not input_file.lower().endswith(('.xlsx')):
-    sys.exit('Input file is not an .xlsx file. Check if you provided the right file.')
-   
+    print('Error: The input file is not an .xlsx file. Check if you provided the right file.\n')
+    sys.exit(3)
+
 # Check if the right sheet exist
 from openpyxl import load_workbook
 user_wb = load_workbook(input_file, read_only = True)
@@ -43,7 +46,8 @@ user_wb = load_workbook(input_file, read_only = True)
 if 'Data' in user_wb.sheetnames:
     data = pd.read_excel(input_file, sheet_name='Data')
 else:
-    sys.exit('Sheet [Data] not found in your input file. Make sure the sheets in your excel workbook are named correctly')
+    print('Error: Sheet [Data] not found in your input file. Make sure the sheets in your excel workbook are named correctly.\nSee the manual for more information.\n')
+    sys.exit(4)
 
 import matplotlib.pyplot as plt
 import math
@@ -81,18 +85,27 @@ if script_goal == 'Isolate_genes_cells':
     with open("Genes.txt", "w") as txt_file:
         for line in sorted_unique_primers:
             txt_file.write(line + "\n")
-    
+
+    import os
+    print(
+        "Successfully stored all cell lines and genes from the input to text files.\n" +
+        "Please select your housekeeping genes and control cell lines and use --genes and --controls to pass them to this program.\n" +
+        "E.g.,\n" +
+        "python3 " + __file__[len(os.getcwd())+1:] + " --input " + args['input'][0] + " --genes " + sorted_unique_primers[0] + " --controls " + sorted_unique_cell_lines[0] + "\n"
+    )
     # Exit script. User now has to select housekeeping genes and control cell lines in web-interface
     sys.exit(0)
 
 # Check if the given values actually match.
 for gene in housekeeping_genes:
     if gene.upper() not in map(str.upper, unique_primers):
-        sys.exit("Error: The provided housekeeping gene '" + gene + "' could not be found in your data. Check if it's named correctly.\n")
+        print("Error: The provided housekeeping gene '" + gene + "' could not be found in your data. Check if it's named correctly.\n")
+        sys.exit(5)
 
 for cell_line in control:
     if cell_line.upper() not in map(str.upper, unique_cell_lines):
-        sys.exit("Error: The provided control '" + cell_line + "' could not be found in your data. Check if it's named correctly.\n")
+        print("Error: The provided control '" + cell_line + "' could not be found in your data. Check if it's named correctly.\n")
+        sys.exit(6)
 
 
 
@@ -176,8 +189,9 @@ else:
 #%% calculate average Ct per condition
 
 if 'Data_compact' not in user_wb.sheetnames:
-    sys.exit('Sheet [Data_compact] not found in your input file. Make sure the sheets in your excel workbook are named correctly')
-    
+    print('Error: Sheet [Data_compact] not found in your input file. Make sure the sheets in your excel workbook are named correctly.\nSee the manual for more information.\n')
+    sys.exit(7)
+
 df_compact = pd.read_excel(input_file, sheet_name='Data_compact')
 
 df_Ct = df_compact.iloc[3:3+len(sample_names), 4]
@@ -367,7 +381,8 @@ plt.savefig('Relative_expression_values.pdf', bbox_inches='tight')
 #%% Plot primer efficiency
 
 if 'Data_output' not in user_wb.sheetnames:
-    sys.exit('Sheet [Data_output] not found in your input file. Make sure the sheets in your excel workbook are named correctly')
+    print('Error: Sheet [Data_output] not found in your input file. Make sure the sheets in your excel workbook are named correctly.\nSee the manual for more information.\n')
+    sys.exit(8)
 
 df_output = pd.read_excel(input_file, sheet_name='Data_output')
 
