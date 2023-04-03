@@ -12,7 +12,7 @@ parser = argparse.ArgumentParser(description='Automated analysis of LinRegPCR')
 parser.add_argument('--input', action='store', nargs=1)
 parser.add_argument('--genes', action='store', nargs='*')
 parser.add_argument('--controls', action='store', nargs='*')
-    
+
 args = vars(parser.parse_args())
 
 if args['input'] == None:
@@ -32,7 +32,6 @@ else:
 #%% Find unique primers and cell lines
 
 import pandas as pd
-import sys
 # Check if analysis excel file exist
 if not input_file.lower().endswith(('.xlsx')):
     sys.exit('Input file is not an .xlsx file. Check if you provided the right file.')
@@ -75,8 +74,8 @@ if script_goal == 'Isolate_genes_cells':
     sorted_unique_cell_lines = natsorted(unique_cell_lines)
     with open("Cell_lines.txt", "w") as txt_file:
         for line in sorted_unique_cell_lines:
-            txt_file.write(line + "\n") 
-    
+            txt_file.write(line + "\n")
+
     # Save names of used cell lines in .txt file
     sorted_unique_primers = natsorted(unique_primers)
     with open("Genes.txt", "w") as txt_file:
@@ -121,7 +120,7 @@ for i in range(len(index)):
     plt.ylim(0,max_yvalue)
     ax.set_title(sample_names[index[i]], fontsize = 30)
     name_counter = name_counter + 1
-    
+
 plt.savefig('qPCR_plots_sorted.pdf', bbox_inches='tight')
 
 #%% Plot melting curves
@@ -132,9 +131,9 @@ if 'Melting curves' in user_wb.sheetnames:
     for col in df_melting.columns:
         if col.startswith('Unnamed'):
             del df_melting[col]
-        
+
     x_melting = df_melting[df_melting.columns[index[0]]]
-        
+
     for col in df_melting.columns:
         if col.startswith('X'):
             del df_melting[col]
@@ -146,7 +145,7 @@ if 'Melting curves' in user_wb.sheetnames:
     subplot_number = 1
     name_counter = 0
     index_number = 0
-    
+
     y_max = max(df_melting.max()) * 1.1
 
     for i in range(len(index)):
@@ -191,7 +190,7 @@ for i in range(0, len(unique_cell_lines)):
         replicate_df_temp = df_Ct[df_Ct['Sample'] == replicate_name]
         replicates_sorted.iloc[row_counter, 1:(2+nr_replicates-1)] = replicate_df_temp['Ct value'].tolist()
         row_counter = row_counter + 1
-        
+
 ## Remove outliers (SD > 0.2)!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!?!?!?!!?!?!?!?!??!??!!?!?!?!?!?!?!?!?!?!??!!?!?!!!
 # outlier_threshold = 1 # times SD
 
@@ -207,7 +206,7 @@ for i in range(0, len(unique_cell_lines)):
 #     for j in range(1,1+nr_replicates):
 #         if df_outliers_removed.iloc[i,j] > temp_max or df_outliers_removed.iloc[i,j] < temp_min:
 #             df_outliers_removed.iloc[i,j] = None
-        
+
 # Calculate mean per condition
 # Ct_grouped = df_Ct.groupby(['Sample']).mean()
 
@@ -241,16 +240,16 @@ plt.subplots_adjust(hspace = 0.5, wspace = 0.3)
 for i in range(0,len(unique_primers)):
     ax = plt.subplot(size_subplots, size_subplots, subplot_number)
     subplot_number += 1
-        
+
     temp_df = replicates_sorted[replicates_sorted[0].str.partition('_')[2] == unique_primers[i]]
     temp_values = temp_df.iloc[:,1:1+nr_replicates].mean(axis=1).tolist()
     temp_samples = temp_df.iloc[:,0].tolist()
     for j in range(0,len(temp_samples)):
         temp_samples[j] = temp_samples[j].replace('_' + unique_primers[i], "")
-        
+
     # Store Ct values per primer in dataframe (later save to excel)
-    avg_Ct_df[unique_primers[i]] = temp_values 
-         
+    avg_Ct_df[unique_primers[i]] = temp_values
+
     for k in range(0,len(temp_samples)):
         if temp_samples[k] in control:      # Control lines will have gray bars
             color_list[k] = 'gray'
@@ -258,20 +257,20 @@ for i in range(0,len(unique_primers)):
             color_list[k] = 'green'
         else:                               # Investigated lines will have blue bars
             color_list[k] = 'royalblue'
-    
+
     ax.bar(temp_samples, temp_values, color=color_list, alpha=0.7)
     ax.tick_params(axis='x', labelrotation=90)
     ax.set_ylim(0,40)
     ax.set_title(unique_primers[i])
-   
+
     for i in range(len(unique_cell_lines)):
        ax.scatter([i] * nr_replicates, temp_df.iloc[i,1:1+nr_replicates].values.tolist(), marker='o', c='k', s=5)
-       
+
 
 plt.savefig('Average_Ct_bargraph.pdf', bbox_inches='tight')
 
 avg_Ct_df.index = temp_samples
-avg_Ct_df.to_excel("Average_Ct_values.xlsx")  
+avg_Ct_df.to_excel("Average_Ct_values.xlsx")
 
 #%% Calculate relative expression (variable number of housekeeping genes)
 
@@ -279,7 +278,7 @@ from statistics import mean
 
 # Initialize dataframe and check if housekeeping genes are in the dataframe
 dCt_df = pd.DataFrame()
- 
+
 # Store column names. For analysis, it does not matter whether upper or lower case housekeeping genes is used.
 original_col_names = avg_Ct_df.columns.copy()
 analysis_col_names = avg_Ct_df.columns.str.upper()
@@ -299,8 +298,8 @@ for index, row in avg_Ct_df.iterrows():#dCt_df.iterrows():
     for i in range(0,len(unique_primers)):
         avg_Ct_housekeeping = mean(avg_Ct_df.loc[index, housekeeping_genes_upper])
         dCt_df.loc[index, unique_primers_analysis[i]] = avg_Ct_df.loc[index, unique_primers_analysis[i]] - avg_Ct_housekeeping
-        
- 
+
+
 # Average control lines to calculate ddCt
 dCt_df.loc['Control average'] = dCt_df.loc[control,:].mean()
 
@@ -309,7 +308,7 @@ ddCt_df = pd.DataFrame()
 
 for i in range(0,len(unique_primers)):
     for index, row in dCt_df.iterrows():
-        #ddCt_df.loc[index, unique_primers[i]] = dCt_df.loc['Control average', unique_primers[i]] - dCt_df.loc[index, unique_primers[i]] 
+        #ddCt_df.loc[index, unique_primers[i]] = dCt_df.loc['Control average', unique_primers[i]] - dCt_df.loc[index, unique_primers[i]]
         ddCt_df.loc[index, unique_primers_analysis[i]] = dCt_df.loc[index, unique_primers_analysis[i]] - dCt_df.loc['Control average', unique_primers_analysis[i]]
 
 # Calculate relative ddCt (2^-2ddCt)
@@ -337,20 +336,20 @@ y_max = max(rel_ddCt_df.max()) * 1.1
 for i in range(0,len(unique_primers)):
     ax = plt.subplot(size_subplots, size_subplots, subplot_number)
     subplot_number += 1
-        
+
     temp_values = rel_ddCt_df[unique_primers[i]].tolist()
     temp_samples = rel_ddCt_df.index
     temp_samples = temp_samples.tolist()
-    
+
     for j in range(0,len(temp_samples)):
         temp_samples[j] = temp_samples[j].replace('_' + unique_primers[i], "")
-     
+
     for k in range(0,len(temp_samples)):
         if temp_samples[k] in control or temp_samples[k] == 'Control average':      # Control lines will have gray bars
             color_list[k] = 'gray'
         else:                                                                       # Investigated lines will have blue bars
             color_list[k] = 'royalblue'
-    
+
     plt.bar(temp_samples, temp_values, color=color_list, alpha=0.8)
     plt.xticks(rotation='vertical')
     plt.ylim(0,y_max)
@@ -388,7 +387,7 @@ for i in unique_primers:
     primers_sorted.iloc[row_counter, 1:nr_replicates * (nr_samples-1) + 1] = primer_df_temp['Individual primer efficiency'].tolist()
     primers_sorted.loc[row_counter, 'Mean'] = temp_primer_mean
     row_counter = row_counter + 1
-    
+
 # Plot primer efficiency
 fig, ax = plt.subplots()
 ax.bar(unique_primers.tolist(), primers_sorted['Mean'], alpha=0.5)
@@ -398,7 +397,7 @@ plt.axhline(y=1.8, color='k', ls='--')
 
 for i in range(len(unique_primers)):
    ax.scatter([i] * nr_replicates * (nr_samples-1), primers_sorted.iloc[i,1:nr_replicates * (nr_samples-1) + 1].values.tolist(), marker='o', c='k', s=5)
-       
+
 plt.savefig('Primer_efficiency.pdf', bbox_inches='tight')
 
 #%% Quit script
