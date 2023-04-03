@@ -5,27 +5,31 @@ Script for automating the analysis of qPCR data
 
 #%% Check user input
 import sys
-# input to script from web page: python qpcr_analysis.py -input Analysis.xlsx --genes GAPDH Bactin --Control_lines Control1 Control2 FLB240
+# input to script from web page: python qpcr_analysis.py -input Analysis.xlsx --genes GAPDH Bactin --controls Control1 Control2 FLB240
 
 import argparse
 parser = argparse.ArgumentParser(description='Automated analysis of LinRegPCR')
-parser.add_argument('-input', action='store', nargs=1)
+parser.add_argument('--input', action='store', nargs=1)
 parser.add_argument('--genes', action='store', nargs='*')
-parser.add_argument('--Control_lines', action='store', nargs='*')
+parser.add_argument('--controls', action='store', nargs='*')
     
 args = vars(parser.parse_args())
 
-if len(args) != 3:
+if args['input'] == None:
     sys.exit('Error: wrong number of arguments. First provide the Excel file to be analyzed. Then, select housekeeping genes and control (normalizer) lines on the web-interface.')
 else:
-    if args['genes'] == None and args['Control_lines'] == None:
+    if args['genes'] == None and args['controls'] == None:
         script_goal = 'Isolate_genes_cells'
         input_file = args['input'][0]
+    elif args['genes'] == None or args['controls'] == None:
+        sys.exit('Error: wrong  number of arguments. Provide the Excel file to be analysed only or provide the Excel file to be analyzed together with housekeeping genes and control lines')
     else:
         script_goal = 'Complete_analysis'
         input_file = args['input'][0]
         housekeeping_genes =args['genes']
-        control = args['Control_lines']
+        control = args['controls']
+        
+print(arguments == 1)
 
 #%% Find unique primers and cell lines
 
