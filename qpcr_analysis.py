@@ -90,6 +90,10 @@ for gene in housekeeping_genes:
     if gene.upper() not in map(str.upper, unique_primers):
         sys.exit("Error: The provided housekeeping gene '" + gene + "' could not be found in your data. Check if it's named correctly.\n")
 
+for cell_line in control:
+    if cell_line.upper() not in map(str.upper, unique_cell_lines):
+        sys.exit("Error: The provided control '" + cell_line + "' could not be found in your data. Check if it's named correctly.\n")
+
 
 
 x = range(0, data.shape[1] - 1)
