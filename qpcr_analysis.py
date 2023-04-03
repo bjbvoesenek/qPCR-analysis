@@ -28,8 +28,6 @@ else:
         input_file = args['input'][0]
         housekeeping_genes =args['genes']
         control = args['controls']
-        
-print(arguments == 1)
 
 #%% Find unique primers and cell lines
 
@@ -43,10 +41,10 @@ if not input_file.lower().endswith(('.xlsx')):
 from openpyxl import load_workbook
 user_wb = load_workbook(input_file, read_only = True)
 
-if 'Removed empty wells' in user_wb.sheetnames:
-    data = pd.read_excel(input_file, sheet_name='Removed empty wells')
+if 'Data' in user_wb.sheetnames:
+    data = pd.read_excel(input_file, sheet_name='Data')
 else:
-    sys.exit('Sheet [Removed empty wells] not found in your input file. Make sure the sheets in your excel workbook are named correctly')
+    sys.exit('Sheet [Data] not found in your input file. Make sure the sheets in your excel workbook are named correctly')
 
 import matplotlib.pyplot as plt
 import math
@@ -167,10 +165,10 @@ else:
 
 #%% calculate average Ct per condition
 
-if 'Removed empty wells_compact' not in user_wb.sheetnames:
-    sys.exit('Sheet [Removed empty wells_compact] not found in your input file. Make sure the sheets in your excel workbook are named correctly')
+if 'Data_compact' not in user_wb.sheetnames:
+    sys.exit('Sheet [Data_compact] not found in your input file. Make sure the sheets in your excel workbook are named correctly')
     
-df_compact = pd.read_excel(input_file, sheet_name='Removed empty wells_compact')
+df_compact = pd.read_excel(input_file, sheet_name='Data_compact')
 
 df_Ct = df_compact.iloc[3:3+len(sample_names), 4]
 df_Ct = df_Ct.to_frame()
@@ -362,10 +360,10 @@ plt.savefig('Relative_expression_values.pdf', bbox_inches='tight')
 
 #%% Plot primer efficiency
 
-if 'Removed empty wells_output' not in user_wb.sheetnames:
-    sys.exit('Sheet [Removed empty wells_output] not found in your input file. Make sure the sheets in your excel workbook are named correctly')
+if 'Data_output' not in user_wb.sheetnames:
+    sys.exit('Sheet [Data_output] not found in your input file. Make sure the sheets in your excel workbook are named correctly')
 
-df_output = pd.read_excel(input_file, sheet_name='Removed empty wells_output')
+df_output = pd.read_excel(input_file, sheet_name='Data_output')
 
 df_primer_eff = df_output.iloc[3:3+len(sample_names), 6]
 df_primer_eff = df_primer_eff.to_frame()
