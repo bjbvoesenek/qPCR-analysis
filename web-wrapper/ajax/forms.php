@@ -154,6 +154,128 @@ if (ACTION == 'upload') {
 
 
 
+elseif (ACTION == 'get-genes') {
+    // What genes were found in the input file? Let the user choose the housekeeping genes.
+    $sID = ($_POST['jobID'] ?? '');
+    $sCSRF = ($_POST['csrf_token'] ?? '');
+    if (empty($_SESSION['csrf_tokens']['upload'][$sID])
+        || $_SESSION['csrf_tokens']['upload'][$sID] != $sCSRF) {
+?>
+        lovd_updateModal({
+            "title": "Error",
+            "classes": ["border-danger", "bg-danger", "text-white"],
+            "body": "Sorry, there was an error verifying the data. Try reloading the page, and submitting the file again."
+        });
+<?php
+        exit;
+    }
+
+    // OK, run the script to get the gene list.
+    @chdir(DATA_PATH . $sID);
+    $aOut = array();
+    @exec(
+        'python3 ../../../qpcr_analysis.py -i input.xlsx 2>&1',
+        $aOut,
+        $nReturnCode
+    );
+    $sOut = implode("\n", $aOut);
+    $sFile = 'Genes.txt';
+
+    // To check if it worked, we will check the return code and check for the file.
+    $sError = '';
+    if ($nReturnCode !== 0 || !file_exists($sFile)) {
+        $sError = 'The analysis program reported an error.';
+        if ($aOut) {
+            $sError .= "<BR>" . implode("<BR>", array_map('htmlspecialchars', $aOut));
+        }
+?>
+        lovd_updateModal({
+            "title": "Error",
+            "classes": ["border-danger", "bg-danger", "text-white"],
+            "body": "Sorry, there was an error extracting the data.<BR><?php echo $sError; ?>"
+        });
+<?php
+        exit;
+    }
+
+    // Fetch the gene list.
+    $aGenes = file($sFile, FILE_IGNORE_NEW_LINES);
+    $sGenes = implode(
+        ' ',
+        array_map(
+            function ($sGene)
+            {
+                // Not sure why Bootstrap doesn't allow us to place the checkbox inside the label.
+                $sID = preg_replace('/[^a-z0-9-]/', '-', strtolower($sGene));
+                return
+                    '<input type="checkbox" class="btn-check" name="genes[]" id="btn-check-' . $sID . '" value="' . $sGene . '">' .
+                    '<label class="btn btn-outline-primary mb-1" for="btn-check-' . $sID . '">' . $sGene . '</label>';
+            },
+            $aGenes
+        )
+    );
+
+    // OK, ready for the next step.
+    $_SESSION['csrf_tokens']['upload'][$sID] = md5(uniqid());
+?>
+    lovd_updateModal({
+        "size": "lg",
+        "title": "Please select your housekeeping genes",
+        "classes": [],
+        "body": '<form><?php echo $sGenes; ?></form>',
+        "buttons": [["primary", "Submit"]]
+    });
+    $(function ()
+    {
+        oModal.find("form").submit(
+            function (e)
+            {
+                e.preventDefault();
+
+                // Only submit if the form is valid (required fields are filled in, etc).
+                var nCheckBoxes = $(this).find("input[type=checkbox]:checked").length;
+                if (!nCheckBoxes) {
+                    $(this).prepend('<div class="alert alert-danger mb-3" role="alert">Please select at least one housekeeping gene.</div>');
+                    return false;
+                }
+
+                var formData = new FormData(this);
+                formData.append("jobID", "<?php echo $sID; ?>");
+                formData.append("csrf_token", "<?php echo $_SESSION['csrf_tokens']['upload'][$sID]; ?>");
+                // The call can take a while, if the file is big.
+                // Better show the modal and run the ajax call only after the modal is shown.
+                lovd_updateModal({
+                    "size": "",
+                    "title": "Please wait...",
+                    "body": '<div class="text-center"><div class="spinner-border" style="width: 3rem; height: 3rem;" role="status"><span class="visually-hidden">Loading...</span></div></div>',
+                    "buttons": []
+                });
+
+                $.post({
+                    url: $("form").attr("action") + "?get-cell-lines",
+                    data: formData,
+                    contentType: false, // Required, fails otherwise.
+                    processData: false, // Required, fails otherwise.
+                    error: function ()
+                    {
+                        lovd_updateModal({
+                            "title": "Error",
+                            "classes": ["border-danger", "bg-danger", "text-white"],
+                            "body": "Failed to request the cell line listing. Please try again later or contact I.F.A.C.Fokkema@LUMC.nl for help and notify him of the job ID: <?php echo $sID; ?>."
+                        });
+                    }
+                });
+            }
+        );
+    });
+<?php
+    exit;
+}
+
+
+
+
+
 elseif (ACTION == 'process') {
     // Actually process the data.
     $sID = ($_POST['jobID'] ?? '');
