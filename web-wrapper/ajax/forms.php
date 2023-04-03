@@ -4,7 +4,7 @@
  * Web wrapper for Bas Voesenek's qPCR analysis script.
  *
  * Created     : 2023-03-23
- * Modified    : 2023-03-31
+ * Modified    : 2023-04-03
  *
  * Copyright   : 2023 Leiden University Medical Center; http://www.LUMC.nl/
  * Programmer  : Ivo F.A.C. Fokkema <I.F.A.C.Fokkema@LUMC.nl>
@@ -40,7 +40,7 @@ if (!ACTION) {
 
 if (ACTION == 'upload') {
     // Check whether all required input was given.
-    if (empty($_FILES) || empty($_POST['housekeeping1']) || empty($_POST['housekeeping2'])) {
+    if (empty($_FILES)) {
         // Client-side checks have been bypassed.
         die('
         $("form input").removeClass(["is-valid", "is-invalid"]).filter(function() { return $(this).val() == ""; }).addClass("is-invalid");');
@@ -51,7 +51,7 @@ if (ACTION == 'upload') {
 
 
 
-    // Handle the file uploads.
+    // Handle the file upload.
     // Determine max file upload size in bytes.
     $nMaxSizeLOVD = 5 * 1024 * 1024; // 5MB = our limit.
     $nMaxSize = min($nMaxSizeLOVD,
@@ -126,14 +126,13 @@ if (ACTION == 'upload') {
     }
 
     // OK, ready for the next step.
-    @file_put_contents(DATA_PATH . $sID . '/arguments.txt', 'input.xlsx ' . $_POST['housekeeping1'] . ' ' . $_POST['housekeeping2']);
     $_SESSION['csrf_tokens']['upload'][$sID] = md5(uniqid());
 ?>
     lovd_updateModal({
-        "title": "Data successfully received, running the analysis..."
+        "title": "Data successfully received, extracting the data..."
     });
     $.post({
-        url: $("form").attr("action") + "?process",
+        url: $("form").attr("action") + "?get-genes",
         data: {
             "jobID": "<?php echo $sID; ?>",
             "csrf_token": "<?php echo $_SESSION['csrf_tokens']['upload'][$sID]; ?>"
@@ -143,7 +142,7 @@ if (ACTION == 'upload') {
             lovd_updateModal({
                 "title": "Error",
                 "classes": ["border-danger", "bg-danger", "text-white"],
-                "body": "Failed to request the processing of the data. Please try again later or contact I.F.A.C.Fokkema@LUMC.nl for help and notify him of the job ID: <?php echo $sID; ?>."
+                "body": "Failed to request the extraction of the data. Please try again later or contact I.F.A.C.Fokkema@LUMC.nl for help and notify him of the job ID: <?php echo $sID; ?>."
             });
         }
     });
