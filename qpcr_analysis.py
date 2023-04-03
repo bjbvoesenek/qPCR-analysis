@@ -85,6 +85,13 @@ if script_goal == 'Isolate_genes_cells':
     # Exit script. User now has to select housekeeping genes and control cell lines in web-interface
     sys.exit(0)
 
+# Check if the given values actually match.
+for gene in housekeeping_genes:
+    if gene.upper() not in map(str.upper, unique_primers):
+        sys.exit("Error: The provided housekeeping gene '" + gene + "' could not be found in your data. Check if it's named correctly.\n")
+
+
+
 x = range(0, data.shape[1] - 1)
 
 size_subplots = data.shape[0]
@@ -286,10 +293,6 @@ unique_primers_analysis = unique_primers.copy()
 unique_primers_analysis = [x.upper() for x in unique_primers_analysis]
 
 avg_Ct_df.columns = analysis_col_names
-
-for gene in housekeeping_genes:
-    if gene.upper() not in avg_Ct_df.columns.str.upper():
-        sys.exit('The provided housekeeping genes could not be found in your data. Check if housekeeping genes are named correctly.') 
 
 # Subtract housekeeping gene Ct from primer Ct in every row/sample (delta Ct)
 housekeeping_genes_upper = [s.upper() for s in housekeeping_genes]
