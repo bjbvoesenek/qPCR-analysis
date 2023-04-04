@@ -4,7 +4,7 @@
  * Web wrapper for Bas Voesenek's qPCR analysis script.
  *
  * Created     : 2023-03-22
- * Modified    : 2023-03-31
+ * Modified    : 2023-04-04
  *
  * Copyright   : 2023 Leiden University Medical Center; http://www.LUMC.nl/
  * Programmer  : Ivo F.A.C. Fokkema <I.F.A.C.Fokkema@LUMC.nl>
@@ -87,9 +87,11 @@ if ($sError) {
     // OK, print the form.
 ?>
         <div class="alert alert-info mb-3" role="alert">
-            Please select your input file (.xlsx) and fill in your housekeeping genes.
-            Then, submit the form to start the qPCR analysis.
+            Please select your input file (.xlsx) and submit the form.
+            In the next steps you can choose your housekeeping genes and your control cell lines.
+            After this, the qPCR analysis will start.
             Note, this process will take a while, but should be finished within a minute.
+            When done, you will receive a zipped archive containing all resulting files.
         </div>
         <!-- Placeholder for errors. -->
         <div class="alert alert-danger mb-3 d-none" role="alert"></div>
@@ -102,24 +104,6 @@ if ($sError) {
                     <input class="form-control" id="inputFile" type="file" name="file" required>
                     <div class="invalid-feedback">
                         Please provide a valid Excel sheet, containing the qPCR data.
-                    </div>
-                </div>
-            </div>
-            <div class="row mb-2 g-2">
-                <label for="inputHouseKeeping1" class="col-sm-3 col-form-label">Housekeeping gene #1</label>
-                <div class="col-sm-9">
-                    <input class="form-control" id="inputHouseKeeping1" type="text" name="housekeeping1" placeholder="e.g., GAPDH" required>
-                    <div class="invalid-feedback">
-                        Please provide a valid housekeeping gene, like GAPDH.
-                    </div>
-                </div>
-            </div>
-            <div class="row mb-2 g-2">
-                <label for="inputHouseKeeping2" class="col-sm-3 col-form-label">Housekeeping gene #2</label>
-                <div class="col-sm-9">
-                    <input class="form-control" id="inputHouseKeeping2" type="text" name="housekeeping2" placeholder="e.g., Bactin" required>
-                    <div class="invalid-feedback">
-                        Please provide a valid housekeeping gene, like Bactin.
                     </div>
                 </div>
             </div>
@@ -227,6 +211,8 @@ if ($sError) {
                                     oModal.find(".modal-footer").append('<button type="button" class="btn btn-' + aButton[0] + '">' + aButton[1] + '</button>');
                                     if (aButton[1] == "Close") {
                                         oModal.find(".modal-footer button").last().click(function () { obModal.hide(); })
+                                    } else if (aButton[1] == "Submit") {
+                                        oModal.find(".modal-footer button").last().click(function () { oModal.find(".modal-body form").submit(); })
                                     }
                                 }
                             }
