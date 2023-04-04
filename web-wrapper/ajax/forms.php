@@ -272,6 +272,134 @@ elseif (ACTION == 'get-genes') {
 
 
 
+if (ACTION == 'get-cell-lines') {
+    // Process given housekeeping genes, and ask user for the control cell lines.
+    // What genes were found in the input file? Let the user choose the housekeeping genes.
+    $sID = ($_POST['jobID'] ?? '');
+    $sCSRF = ($_POST['csrf_token'] ?? '');
+    if (empty($_SESSION['csrf_tokens']['upload'][$sID])
+        || $_SESSION['csrf_tokens']['upload'][$sID] != $sCSRF) {
+?>
+        lovd_updateModal({
+            "title": "Error",
+            "classes": ["border-danger", "bg-danger", "text-white"],
+            "body": "Sorry, there was an error verifying the data. Try reloading the page, and submitting the file again.",
+            "buttons": []
+        });
+<?php
+        exit;
+    }
+
+
+
+    // Fetch the gene list.
+    @chdir(DATA_PATH . $sID);
+    $sFile = 'Genes.txt';
+    $aGenes = file($sFile, FILE_IGNORE_NEW_LINES);
+
+    $_ERRORS = array();
+    if (empty($_POST['genes']) || !count($_POST['genes'])) {
+        $_ERRORS[''][] = 'Please select at least one housekeeping gene.';
+    } else {
+        $aNotFound = array_diff($_POST['genes'], $aGenes);
+        if ($aNotFound) {
+            // Some genes don't exist in our list.
+            $_ERRORS[''][] = 'Unknown gene' . (count($aNotFound) == 1? '' : 's') . ': &quot;' . implode('&quot;, &quot;', $aNotFound) . '&quot;.';
+        }
+    }
+
+    if ($_ERRORS) {
+        // Send the errors back to the form.
+?>
+        // There are errors. Prepare the form.
+        if (!oModal.find("form div.alert").length) {
+            oModal.find("form").prepend('<div class="alert alert-danger mb-3" role="alert"></div>');
+        } else {
+            oModal.find("form div.alert").html("");
+        }
+        oModal.find("form div.alert").html("<?= addslashes(implode('<BR>', $_ERRORS[''])) ?>");
+        // Re-enable the submit button.
+        oModal.find("button").prop("disabled", false).html(oModal.find("button").text().trim());
+<?php
+        exit;
+    }
+
+    // If we get here, no errors were encountered with the input.
+    // Fetch the cell line list.
+    $sFile = 'Cell_lines.txt';
+    $aCellLines = file($sFile, FILE_IGNORE_NEW_LINES);
+    $sCellLines = implode(
+        ' ',
+        array_map(
+            function ($sCellLine)
+            {
+                // Not sure why Bootstrap doesn't allow us to place the checkbox inside the label.
+                $sID = preg_replace('/[^a-z0-9-]/', '-', strtolower($sCellLine));
+                return
+                    '<input type="checkbox" class="btn-check" name="controls[]" id="btn-check-' . $sID . '" value="' . $sCellLine . '">' .
+                    '<label class="btn btn-outline-primary mb-1" for="btn-check-' . $sID . '">' . $sCellLine . '</label>';
+            },
+            $aCellLines
+        )
+    );
+
+    // OK, ready for the next step.
+    @file_put_contents('arguments.txt', '--input input.xlsx --genes ' . implode(' ', $_POST['genes']));
+    $_SESSION['csrf_tokens']['upload'][$sID] = md5(uniqid());
+?>
+    lovd_updateModal({
+        "size": "lg",
+        "title": "Please select your controls",
+        "classes": [],
+        "body": '<form><?= $sCellLines; ?></form>',
+        "buttons": [["primary", "Submit"]]
+    });
+    $(function ()
+    {
+        oModal.find("form").submit(
+            function (e)
+            {
+                e.preventDefault();
+
+                // Only submit if the form is valid (required fields are filled in, etc).
+                var nCheckBoxes = $(this).find("input[type=checkbox]:checked").length;
+                if (!nCheckBoxes) {
+                    $(this).prepend('<div class="alert alert-danger mb-3" role="alert">Please select at least one control cell line.</div>');
+                    return false;
+                }
+
+                var formData = new FormData(this);
+                formData.append("jobID", "<?= $sID; ?>");
+                formData.append("csrf_token", "<?= $_SESSION['csrf_tokens']['upload'][$sID]; ?>");
+                // Turn off the submit button, but keep the form. We might need to post errors there.
+                oModal.find("button").prop("disabled", true).append(' <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>');
+
+                $.post({
+                    url: "<?= CURRENT_PATH; ?>?store-all",
+                    data: formData,
+                    contentType: false, // Required, fails otherwise.
+                    processData: false, // Required, fails otherwise.
+                    error: function ()
+                    {
+                        lovd_updateModal({
+                            "title": "Error",
+                            "classes": ["border-danger", "bg-danger", "text-white"],
+                            "body": "Failed to request the processing of the data. Please try again later or contact I.F.A.C.Fokkema@LUMC.nl for help and notify him of the job ID: <?= $sID; ?>.",
+                            "buttons": []
+                        });
+                    }
+                });
+            }
+        );
+    });
+<?php
+    exit;
+}
+
+
+
+
+
 elseif (ACTION == 'process') {
     // Actually process the data.
     $sID = ($_POST['jobID'] ?? '');
