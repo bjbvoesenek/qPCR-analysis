@@ -8,10 +8,16 @@ import sys
 # input to script from web page: python qpcr_analysis.py --input Analysis.xlsx --genes GAPDH Bactin --controls Control1 Control2 FLB240
 
 import argparse
-parser = argparse.ArgumentParser(description='Automated analysis of LinRegPCR')
-parser.add_argument('--input', action='store', nargs=1)
-parser.add_argument('--genes', action='store', nargs='*')
-parser.add_argument('--controls', action='store', nargs='*')
+parser = argparse.ArgumentParser(description='Automated analysis of qPCR data exported from LinRegPCR')
+parser.add_argument(
+    '--input', action='store', nargs=1, required=True, metavar='<input file>',
+    help='an .xlsx saved from LinRegPCR')
+parser.add_argument(
+    '--genes', action='store', nargs='+', metavar='<gene>',
+    help='a list of housekeeping genes, each separated by a space')
+parser.add_argument(
+    '--controls', action='store', nargs='+', metavar='<control>',
+    help='a list of control cell lines, each separated by a space')
 
 args = vars(parser.parse_args())
 extract_data = False # Should we just extract the genes and cell lines?
