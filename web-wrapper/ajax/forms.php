@@ -456,7 +456,7 @@ elseif (ACTION == 'store-all') {
     $_SESSION['csrf_tokens']['upload'][$sID] = md5(uniqid());
 ?>
     lovd_updateModal({
-        "title": "Data successfully received, running the analysis...",
+        "title": "Data successfully received, running the analysis.",
         "body": '<div class="text-center"><div class="spinner-border" style="width: 3rem; height: 3rem;" role="status"><span class="visually-hidden">Loading...</span></div></div>',
         "buttons": []
     });
@@ -476,6 +476,16 @@ elseif (ACTION == 'store-all') {
             });
         }
     });
+    // Show some activity for the user.
+    for (i = 1; i < 30; i ++) {
+        setTimeout(
+            function ()
+            {
+                oModal.find(".modal-title").append(".");
+            },
+            i * 2000
+        );
+    }
 <?php
     exit;
 }
