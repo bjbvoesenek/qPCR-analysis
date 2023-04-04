@@ -400,6 +400,90 @@ if (ACTION == 'get-cell-lines') {
 
 
 
+elseif (ACTION == 'store-all') {
+    // Process given control cell lines, and store all the information we have.
+    $sID = ($_POST['jobID'] ?? '');
+    $sCSRF = ($_POST['csrf_token'] ?? '');
+    if (empty($_SESSION['csrf_tokens']['upload'][$sID])
+        || $_SESSION['csrf_tokens']['upload'][$sID] != $sCSRF) {
+?>
+        lovd_updateModal({
+            "title": "Error",
+            "classes": ["border-danger", "bg-danger", "text-white"],
+            "body": "Sorry, there was an error verifying the data. Try reloading the page, and submitting the file again.",
+            "buttons": []
+        });
+<?php
+        exit;
+    }
+
+
+
+    // Fetch the gene list.
+    @chdir(DATA_PATH . $sID);
+    $sFile = 'Cell_lines.txt';
+    $aCellLines = file($sFile, FILE_IGNORE_NEW_LINES);
+
+    $_ERRORS = array();
+    if (empty($_POST['controls']) || !count($_POST['controls'])) {
+        $_ERRORS[''][] = 'Please select at least one control cell line.';
+    } else {
+        $aNotFound = array_diff($_POST['controls'], $aCellLines);
+        if ($aNotFound) {
+            // Some cell lines don't exist in our list.
+            $_ERRORS[''][] = 'Unknown cell line' . (count($aNotFound) == 1? '' : 's') . ': &quot;' . implode('&quot;, &quot;', $aNotFound) . '&quot;.';
+        }
+    }
+
+    if ($_ERRORS) {
+        // Send the errors back to the form.
+?>
+        // There are errors. Prepare the form.
+        if (!oModal.find("form div.alert").length) {
+            oModal.find("form").prepend('<div class="alert alert-danger mb-3" role="alert"></div>');
+        } else {
+            oModal.find("form div.alert").html("");
+        }
+        oModal.find("form div.alert").html("<?= addslashes(implode('<BR>', $_ERRORS[''])) ?>");
+        // Re-enable the submit button.
+        oModal.find("button").prop("disabled", false).html(oModal.find("button").text().trim());
+<?php
+        exit;
+    }
+
+    // OK, ready for the next step.
+    @file_put_contents('arguments.txt', ' --controls ' . implode(' ', $_POST['controls']), FILE_APPEND);
+    $_SESSION['csrf_tokens']['upload'][$sID] = md5(uniqid());
+?>
+    lovd_updateModal({
+        "title": "Data successfully received, running the analysis...",
+        "body": '<div class="text-center"><div class="spinner-border" style="width: 3rem; height: 3rem;" role="status"><span class="visually-hidden">Loading...</span></div></div>',
+        "buttons": []
+    });
+    $.post({
+        url: "<?= CURRENT_PATH; ?>?process",
+        data: {
+            "jobID": "<?php echo $sID; ?>",
+            "csrf_token": "<?php echo $_SESSION['csrf_tokens']['upload'][$sID]; ?>"
+        },
+        error: function ()
+        {
+            lovd_updateModal({
+                "title": "Error",
+                "classes": ["border-danger", "bg-danger", "text-white"],
+                "body": "Failed to request the processing of the data. Please try again later or contact I.F.A.C.Fokkema@LUMC.nl for help and notify him of the job ID: <?php echo $sID; ?>.",
+                "buttons": []
+            });
+        }
+    });
+<?php
+    exit;
+}
+
+
+
+
+
 elseif (ACTION == 'process') {
     // Actually process the data.
     $sID = ($_POST['jobID'] ?? '');
