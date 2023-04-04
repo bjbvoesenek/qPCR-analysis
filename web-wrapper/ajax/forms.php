@@ -325,6 +325,8 @@ if (ACTION == 'get-cell-lines') {
     }
 
     // If we get here, no errors were encountered with the input.
+    @unlink($sFile);
+
     // Fetch the cell line list.
     $sFile = 'Cell_lines.txt';
     $aCellLines = file($sFile, FILE_IGNORE_NEW_LINES);
@@ -452,6 +454,7 @@ elseif (ACTION == 'store-all') {
     }
 
     // OK, ready for the next step.
+    @unlink($sFile);
     @file_put_contents('arguments.txt', ' --controls ' . implode(' ', $_POST['controls']), FILE_APPEND);
     $_SESSION['csrf_tokens']['upload'][$sID] = md5(uniqid());
 ?>
