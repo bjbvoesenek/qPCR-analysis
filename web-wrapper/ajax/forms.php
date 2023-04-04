@@ -175,7 +175,7 @@ elseif (ACTION == 'get-genes') {
     @chdir(DATA_PATH . $sID);
     $aOut = array();
     @exec(
-        'python3 ../../../qpcr_analysis.py -i input.xlsx 2>&1',
+        'python3 ../../../qpcr_analysis.py --input input.xlsx 2>&1',
         $aOut,
         $nReturnCode
     );
@@ -243,17 +243,11 @@ elseif (ACTION == 'get-genes') {
                 var formData = new FormData(this);
                 formData.append("jobID", "<?php echo $sID; ?>");
                 formData.append("csrf_token", "<?php echo $_SESSION['csrf_tokens']['upload'][$sID]; ?>");
-                // The call can take a while, if the file is big.
-                // Better show the modal and run the ajax call only after the modal is shown.
-                lovd_updateModal({
-                    "size": "",
-                    "title": "Please wait...",
-                    "body": '<div class="text-center"><div class="spinner-border" style="width: 3rem; height: 3rem;" role="status"><span class="visually-hidden">Loading...</span></div></div>',
-                    "buttons": []
-                });
+                // Turn off the submit button, but keep the form. We might need to post errors there.
+                oModal.find("button").prop("disabled", true).append(' <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>');
 
                 $.post({
-                    url: "<?= CURRENT_PATH; ?>?store-all",
+                    url: "<?= CURRENT_PATH; ?>?get-cell-lines",
                     data: formData,
                     contentType: false, // Required, fails otherwise.
                     processData: false, // Required, fails otherwise.
@@ -262,7 +256,8 @@ elseif (ACTION == 'get-genes') {
                         lovd_updateModal({
                             "title": "Error",
                             "classes": ["border-danger", "bg-danger", "text-white"],
-                            "body": "Failed to request the cell line listing. Please try again later or contact I.F.A.C.Fokkema@LUMC.nl for help and notify him of the job ID: <?php echo $sID; ?>."
+                            "body": "Failed to request the cell line listing. Please try again later or contact I.F.A.C.Fokkema@LUMC.nl for help and notify him of the job ID: <?php echo $sID; ?>.",
+                            "buttons": []
                         });
                     }
                 });

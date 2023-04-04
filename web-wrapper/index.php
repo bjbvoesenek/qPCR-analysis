@@ -4,7 +4,7 @@
  * Web wrapper for Bas Voesenek's qPCR analysis script.
  *
  * Created     : 2023-03-22
- * Modified    : 2023-04-03
+ * Modified    : 2023-04-04
  *
  * Copyright   : 2023 Leiden University Medical Center; http://www.LUMC.nl/
  * Programmer  : Ivo F.A.C. Fokkema <I.F.A.C.Fokkema@LUMC.nl>
@@ -211,6 +211,8 @@ if ($sError) {
                                     oModal.find(".modal-footer").append('<button type="button" class="btn btn-' + aButton[0] + '">' + aButton[1] + '</button>');
                                     if (aButton[1] == "Close") {
                                         oModal.find(".modal-footer button").last().click(function () { obModal.hide(); })
+                                    } else if (aButton[1] == "Submit") {
+                                        oModal.find(".modal-footer button").last().click(function () { oModal.find(".modal-body form").submit(); })
                                     }
                                 }
                             }
