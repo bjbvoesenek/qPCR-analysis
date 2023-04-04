@@ -14,19 +14,19 @@ parser.add_argument('--genes', action='store', nargs='*')
 parser.add_argument('--controls', action='store', nargs='*')
 
 args = vars(parser.parse_args())
+extract_data = False # Should we just extract the genes and cell lines?
 
 if args['input'] == None:
     print('Error: No input file given. Provide the Excel file to be analyzed using --input.\n')
     sys.exit(1)
 else:
     if args['genes'] == None and args['controls'] == None:
-        script_goal = 'Isolate_genes_cells'
+        extract_data = True
         input_file = args['input'][0]
     elif args['genes'] == None or len(args['genes']) == 0 or args['controls'] == None or len(args['controls']) == 0:
         print('Error: Wrong number of arguments. Provide the Excel file to be analysed only, or provide the Excel file to be analyzed together with housekeeping genes (--genes) and control lines (--controls).\n')
         sys.exit(2)
     else:
-        script_goal = 'Complete_analysis'
         input_file = args['input'][0]
         housekeeping_genes = args['genes']
         control = args['controls']
@@ -53,7 +53,8 @@ import matplotlib.pyplot as plt
 import math
 from natsort import natsorted, index_natsorted, order_by_index
 
-if 'input.txt' in data: del data['input.txt']
+if 'input.txt' in data:
+    del data['input.txt']
 
 sample_names = data['Text']
 index = index_natsorted(sample_names)
@@ -68,12 +69,13 @@ cell_lines = cell_lines.iloc[:,0]
 for n in range(0,len(primer_names)):
     primer_names[n] = primer_names[n].partition('_')[2]
     cell_lines[n] = cell_lines[n].partition('_')[0]
+
 unique_primers = primer_names.unique()
 unique_cell_lines = cell_lines.unique()
 
 #%% Store names of cell lines and primers in .txt files if user only provides Excel sheet
 
-if script_goal == 'Isolate_genes_cells':
+if extract_data:
     # Save names of used cell lines in .txt file
     sorted_unique_cell_lines = natsorted(unique_cell_lines)
     with open("Cell_lines.txt", "w") as txt_file:
@@ -95,6 +97,8 @@ if script_goal == 'Isolate_genes_cells':
     )
     # Exit script. User now has to select housekeeping genes and control cell lines in web-interface
     sys.exit(0)
+
+
 
 # Check if the given values actually match.
 for gene in housekeeping_genes:
