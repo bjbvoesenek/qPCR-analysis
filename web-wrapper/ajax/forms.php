@@ -4,7 +4,7 @@
  * Web wrapper for Bas Voesenek's qPCR analysis script.
  *
  * Created     : 2023-03-23
- * Modified    : 2023-04-03
+ * Modified    : 2023-04-04
  *
  * Copyright   : 2023 Leiden University Medical Center; http://www.LUMC.nl/
  * Programmer  : Ivo F.A.C. Fokkema <I.F.A.C.Fokkema@LUMC.nl>
@@ -28,6 +28,7 @@ header('Content-type: text/javascript; charset=UTF-8');
 
 // Note that we'll have to do this in steps. The script will take quite some time to complete.
 // We can't send asynchronous updates to the page.
+define('CURRENT_PATH', substr(lovd_getProjectFile(), 1));
 define('ACTION', current(array_keys($_GET)));
 if (!ACTION) {
     die('
@@ -132,7 +133,7 @@ if (ACTION == 'upload') {
         "title": "Data successfully received, extracting the data..."
     });
     $.post({
-        url: $("form").attr("action") + "?get-genes",
+        url: "<?= CURRENT_PATH; ?>?get-genes",
         data: {
             "jobID": "<?php echo $sID; ?>",
             "csrf_token": "<?php echo $_SESSION['csrf_tokens']['upload'][$sID]; ?>"
@@ -252,7 +253,7 @@ elseif (ACTION == 'get-genes') {
                 });
 
                 $.post({
-                    url: $("form").attr("action") + "?get-cell-lines",
+                    url: "<?= CURRENT_PATH; ?>?store-all",
                     data: formData,
                     contentType: false, // Required, fails otherwise.
                     processData: false, // Required, fails otherwise.
@@ -324,7 +325,7 @@ elseif (ACTION == 'process') {
         lovd_updateModal({
             "title": "Error",
             "classes": ["border-danger", "bg-danger", "text-white"],
-            "body": "Sorry, there was an error processing the data.<BR><?php echo $sError; ?>"
+            "body": "Sorry, there was an error processing the data.<BR><?= $sError; ?>"
         });
 <?php
         exit;
@@ -338,17 +339,17 @@ elseif (ACTION == 'process') {
         "classes": ["border-success", "bg-success", "text-white"]
     });
     $.post({
-        url: $("form").attr("action") + "?download",
+        url: "<?= CURRENT_PATH; ?>?download",
         data: {
-            "jobID": "<?php echo $sID; ?>",
-            "csrf_token": "<?php echo $_SESSION['csrf_tokens']['upload'][$sID]; ?>"
+            "jobID": "<?= $sID; ?>",
+            "csrf_token": "<?= $_SESSION['csrf_tokens']['upload'][$sID]; ?>"
         },
         error: function ()
         {
             lovd_updateModal({
                 "title": "Error",
                 "classes": ["border-danger", "bg-danger", "text-white"],
-                "body": "Failed to request the preparation of the download. Please try again later or contact I.F.A.C.Fokkema@LUMC.nl for help and notify him of the job ID: <?php echo $sID; ?>."
+                "body": "Failed to request the preparation of the download. Please try again later or contact I.F.A.C.Fokkema@LUMC.nl for help and notify him of the job ID: <?= $sID; ?>."
             });
         }
     });
@@ -393,7 +394,7 @@ elseif (ACTION == 'download') {
         lovd_updateModal({
             "title": "Error",
             "classes": ["border-danger", "bg-danger", "text-white"],
-            "body": "Sorry, there was an error preparing the download.<BR><?php echo $sError; ?>"
+            "body": "Sorry, there was an error preparing the download.<BR><?= $sError; ?>"
         });
 <?php
         exit;
@@ -406,14 +407,14 @@ elseif (ACTION == 'download') {
         "body": "Download ready."
     });
     // When we hide the body, it'll look weird, so we keep the body and style it, then hide the header instead.
-    $(oModal).find(".modal-body").addClass("fs-5");
-    $(oModal).find(".modal-header").hide();
+    oModal.find(".modal-body").addClass("fs-5");
+    oModal.find(".modal-header").hide();
 
     // Trigger a download of the current file.
     // This cannot be done directly, because JS is not allowed to download files.
     // So, here we'll trigger the browser to download the file through an IFRAME.
     $("body").append(
-        '<iframe class="d-none" src="' + $("form").attr("action") + '?raw&jobID=<?php echo $sID . '&csrf_token=' . $_SESSION['csrf_tokens']['upload'][$sID]; ?>"></iframe>'
+        '<iframe class="d-none" src="' + $("form").attr("action") + '?raw&jobID=<?= $sID . '&csrf_token=' . $_SESSION['csrf_tokens']['upload'][$sID]; ?>"></iframe>'
     );
 <?php
     exit;
@@ -447,7 +448,7 @@ elseif (ACTION == 'raw') {
         lovd_updateModal({
             "title": "Error",
             "classes": ["border-danger", "bg-danger", "text-white"],
-            "body": "Sorry, there was an error sending the data.<BR><?php echo $sError; ?>"
+            "body": "Sorry, there was an error sending the data.<BR><?= $sError; ?>"
         });
 <?php
         exit;
