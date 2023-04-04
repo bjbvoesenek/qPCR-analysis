@@ -29,7 +29,7 @@ else:
     if args['genes'] == None and args['controls'] == None:
         extract_data = True
         input_file = args['input'][0]
-    elif args['genes'] == None or len(args['genes']) == 0 or args['controls'] == None or len(args['controls']) == 0:
+    elif args['genes'] == None or args['controls'] == None:
         print('Error: Wrong number of arguments. Provide the Excel file to be analysed only, or provide the Excel file to be analyzed together with housekeeping genes (--genes) and control lines (--controls).\n')
         sys.exit(2)
     else:
