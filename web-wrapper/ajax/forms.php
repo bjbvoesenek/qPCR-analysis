@@ -719,12 +719,21 @@ elseif (ACTION == 'raw') {
     $sCSRF = ($_GET['csrf_token'] ?? '');
     if (empty($_SESSION['csrf_tokens']['upload'][$sID])
         || $_SESSION['csrf_tokens']['upload'][$sID] != $sCSRF) {
+        // We're in an iframe, so sadly, we'll need to do some extra work.
+        header('Content-type: text/html; charset=UTF-8');
 ?>
-        lovd_updateModal({
+<!DOCTYPE html>
+<html>
+<head>
+    <script type="text/javascript">
+        parent.lovd_updateModal({
             "title": "Error",
             "classes": ["border-danger", "bg-danger", "text-white"],
             "body": "Sorry, there was an error verifying the data. Try reloading the page, and submitting the file again."
         });
+    </script>
+</head>
+</html>
 <?php
         exit;
     }
@@ -733,13 +742,22 @@ elseif (ACTION == 'raw') {
     $aSettings = (@json_decode(file_get_contents(FILE_SETTINGS), true) ?? array());
     $sFile = ($aSettings['output_file'] ?? 'results.zip');
     if (!file_exists($sFile)) {
+        // We're in an iframe, so sadly, we'll need to do some extra work.
+        header('Content-type: text/html; charset=UTF-8');
         $sError = 'Could not fetch download.';
 ?>
-        lovd_updateModal({
+<!DOCTYPE html>
+<html>
+<head>
+    <script type="text/javascript">
+        parent.lovd_updateModal({
             "title": "Error",
             "classes": ["border-danger", "bg-danger", "text-white"],
             "body": "Sorry, there was an error sending the data.<BR><?= $sError; ?>"
         });
+    </script>
+</head>
+</html>
 <?php
         exit;
     }
