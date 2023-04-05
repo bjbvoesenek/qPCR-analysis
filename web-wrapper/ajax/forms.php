@@ -27,7 +27,7 @@ define('DATA_PATH', ROOT_PATH . 'data/');
 define('FILE_INPUT', 'input.xlsx');
 define('FILE_GENES', 'Genes.txt');
 define('FILE_CELL_LINES', 'Cell_lines.txt');
-define('FILE_SETTINGS', 'arguments.txt');
+define('FILE_SETTINGS', 'settings.json');
 header('Content-type: text/javascript; charset=UTF-8');
 
 // Note that we'll have to do this in steps. The script will take quite some time to complete.
@@ -347,7 +347,16 @@ if (ACTION == 'get-cell-lines') {
     );
 
     // OK, ready for the next step.
-    @file_put_contents(FILE_SETTINGS, '--input ' . FILE_INPUT . ' --genes ' . implode(' ', $_POST['genes']));
+    @file_put_contents(
+        FILE_SETTINGS,
+        json_encode(
+            array(
+                'housekeeping_genes' => $_POST['genes'],
+                'script_arguments' => '--input ' . FILE_INPUT . ' --genes ' . implode(' ', $_POST['genes'])
+            ),
+            JSON_PRETTY_PRINT
+        )
+    );
     $_SESSION['csrf_tokens']['upload'][$sID] = md5(uniqid());
 ?>
     lovd_updateModal({
@@ -455,7 +464,23 @@ elseif (ACTION == 'store-all') {
 
     // OK, ready for the next step.
     @unlink(FILE_CELL_LINES);
-    @file_put_contents(FILE_SETTINGS, ' --controls ' . implode(' ', $_POST['controls']), FILE_APPEND);
+    // We don't check what we're doing with the settings. If this all fails, the Python script will simply fail.
+    $aSettings = (@json_decode(file_get_contents(FILE_SETTINGS), true) ?? array());
+    @file_put_contents(
+        FILE_SETTINGS,
+        json_encode(
+            array_merge(
+                // This is just for the visual pleasure of keeping the keys in the proper order.
+                array_fill_keys(array('housekeeping_genes', 'controls', 'script_arguments'), ''),
+                $aSettings,
+                array(
+                    'controls' => $_POST['controls'],
+                    'script_arguments' => ($aSettings['script_arguments'] ?? '') . ' --controls ' . implode(' ', $_POST['controls']),
+                ),
+            ),
+            JSON_PRETTY_PRINT
+        )
+    );
     $_SESSION['csrf_tokens']['upload'][$sID] = md5(uniqid());
 ?>
     lovd_updateModal({
@@ -522,7 +547,7 @@ elseif (ACTION == 'process') {
             'escapeshellarg',
             explode(
                 ' ',
-                (string) @file_get_contents(FILE_SETTINGS)
+                (@json_decode(file_get_contents(FILE_SETTINGS), true) ?? array('script_arguments' => ''))['script_arguments']
             )
         )
     );
