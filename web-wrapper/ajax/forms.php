@@ -525,7 +525,7 @@ elseif (ACTION == 'store-all') {
         setTimeout(
             function ()
             {
-                oModal.find(".modal-title").append(".");
+                oModal.find(".modal-content").not(".bg-danger").find(".modal-title").append(".");
             },
             i * 2000
         );
