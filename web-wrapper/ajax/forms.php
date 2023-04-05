@@ -4,7 +4,7 @@
  * Web wrapper for Bas Voesenek's qPCR analysis script.
  *
  * Created     : 2023-03-23
- * Modified    : 2023-04-04
+ * Modified    : 2023-04-05
  *
  * Copyright   : 2023 Leiden University Medical Center; http://www.LUMC.nl/
  * Programmer  : Ivo F.A.C. Fokkema <I.F.A.C.Fokkema@LUMC.nl>
@@ -24,6 +24,10 @@ if (ini_get('session.cookie_path') == '/') {
 @session_start();
 
 define('DATA_PATH', ROOT_PATH . 'data/');
+define('FILE_INPUT', 'input.xlsx');
+define('FILE_GENES', 'Genes.txt');
+define('FILE_CELL_LINES', 'Cell_lines.txt');
+define('FILE_SETTINGS', 'arguments.txt');
 header('Content-type: text/javascript; charset=UTF-8');
 
 // Note that we'll have to do this in steps. The script will take quite some time to complete.
@@ -114,7 +118,7 @@ if (ACTION == 'upload') {
 
     // If we get here, no errors were encountered with the input. Process the file.
     $sID = str_pad(microtime(true), 15, '0');
-    $b = (@mkdir(DATA_PATH . $sID) && @move_uploaded_file($_FILES['file']['tmp_name'], DATA_PATH . $sID . '/input.xlsx'));
+    $b = (@mkdir(DATA_PATH . $sID) && @move_uploaded_file($_FILES['file']['tmp_name'], DATA_PATH . $sID . '/' . FILE_INPUT));
     if (!$b) {
 ?>
         lovd_updateModal({
@@ -175,16 +179,15 @@ elseif (ACTION == 'get-genes') {
     @chdir(DATA_PATH . $sID);
     $aOut = array();
     @exec(
-        'python3 ../../../qpcr_analysis.py --input input.xlsx 2>&1',
+        'python3 ../../../qpcr_analysis.py --input ' . FILE_INPUT . ' 2>&1',
         $aOut,
         $nReturnCode
     );
     $sOut = implode("\n", $aOut);
-    $sFile = 'Genes.txt';
 
     // To check if it worked, we will check the return code and check for the file.
     $sError = '';
-    if ($nReturnCode !== 0 || !file_exists($sFile)) {
+    if ($nReturnCode !== 0 || !file_exists(FILE_GENES)) {
         $sError = 'The analysis program reported an error.';
         if ($aOut) {
             $sError .= "<BR>" . implode("<BR>", array_map('htmlspecialchars', $aOut));
@@ -200,7 +203,7 @@ elseif (ACTION == 'get-genes') {
     }
 
     // Fetch the gene list.
-    $aGenes = file($sFile, FILE_IGNORE_NEW_LINES);
+    $aGenes = file(FILE_GENES, FILE_IGNORE_NEW_LINES);
     $sGenes = implode(
         ' ',
         array_map(
@@ -294,8 +297,7 @@ if (ACTION == 'get-cell-lines') {
 
     // Fetch the gene list.
     @chdir(DATA_PATH . $sID);
-    $sFile = 'Genes.txt';
-    $aGenes = file($sFile, FILE_IGNORE_NEW_LINES);
+    $aGenes = file(FILE_GENES, FILE_IGNORE_NEW_LINES);
 
     $_ERRORS = array();
     if (empty($_POST['genes']) || !count($_POST['genes'])) {
@@ -325,11 +327,10 @@ if (ACTION == 'get-cell-lines') {
     }
 
     // If we get here, no errors were encountered with the input.
-    @unlink($sFile);
+    @unlink(FILE_GENES);
 
     // Fetch the cell line list.
-    $sFile = 'Cell_lines.txt';
-    $aCellLines = file($sFile, FILE_IGNORE_NEW_LINES);
+    $aCellLines = file(FILE_CELL_LINES, FILE_IGNORE_NEW_LINES);
     $sCellLines = implode(
         ' ',
         array_map(
@@ -346,7 +347,7 @@ if (ACTION == 'get-cell-lines') {
     );
 
     // OK, ready for the next step.
-    @file_put_contents('arguments.txt', '--input input.xlsx --genes ' . implode(' ', $_POST['genes']));
+    @file_put_contents(FILE_SETTINGS, '--input ' . FILE_INPUT . ' --genes ' . implode(' ', $_POST['genes']));
     $_SESSION['csrf_tokens']['upload'][$sID] = md5(uniqid());
 ?>
     lovd_updateModal({
@@ -423,8 +424,7 @@ elseif (ACTION == 'store-all') {
 
     // Fetch the gene list.
     @chdir(DATA_PATH . $sID);
-    $sFile = 'Cell_lines.txt';
-    $aCellLines = file($sFile, FILE_IGNORE_NEW_LINES);
+    $aCellLines = file(FILE_CELL_LINES, FILE_IGNORE_NEW_LINES);
 
     $_ERRORS = array();
     if (empty($_POST['controls']) || !count($_POST['controls'])) {
@@ -454,8 +454,8 @@ elseif (ACTION == 'store-all') {
     }
 
     // OK, ready for the next step.
-    @unlink($sFile);
-    @file_put_contents('arguments.txt', ' --controls ' . implode(' ', $_POST['controls']), FILE_APPEND);
+    @unlink(FILE_CELL_LINES);
+    @file_put_contents(FILE_SETTINGS, ' --controls ' . implode(' ', $_POST['controls']), FILE_APPEND);
     $_SESSION['csrf_tokens']['upload'][$sID] = md5(uniqid());
 ?>
     lovd_updateModal({
@@ -522,7 +522,7 @@ elseif (ACTION == 'process') {
             'escapeshellarg',
             explode(
                 ' ',
-                (string) @file_get_contents('arguments.txt')
+                (string) @file_get_contents(FILE_SETTINGS)
             )
         )
     );
