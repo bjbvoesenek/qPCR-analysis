@@ -118,7 +118,11 @@ if (ACTION == 'upload') {
 
     // If we get here, no errors were encountered with the input. Process the file.
     $sID = str_pad(microtime(true), 15, '0');
-    $b = (@mkdir(DATA_PATH . $sID) && @move_uploaded_file($_FILES['file']['tmp_name'], DATA_PATH . $sID . '/' . FILE_INPUT));
+    $b = (
+        @mkdir(DATA_PATH . $sID) &&
+        @chdir(DATA_PATH . $sID) &&
+        @move_uploaded_file($_FILES['file']['tmp_name'], FILE_INPUT)
+    );
     if (!$b) {
 ?>
         lovd_updateModal({
@@ -131,6 +135,15 @@ if (ACTION == 'upload') {
     }
 
     // OK, ready for the next step.
+    $aSettings = array_fill_keys(
+        array('input_file', 'housekeeping_genes', 'controls', 'script_arguments'),
+        ''
+    );
+    $aSettings['input_file'] = $_FILES['file']['name'];
+    @file_put_contents(
+        FILE_SETTINGS,
+        json_encode($aSettings, JSON_PRETTY_PRINT)
+    );
     $_SESSION['csrf_tokens']['upload'][$sID] = md5(uniqid());
 ?>
     lovd_updateModal({
@@ -347,12 +360,17 @@ if (ACTION == 'get-cell-lines') {
     );
 
     // OK, ready for the next step.
+    // We don't check what we're doing with the settings. If this all fails, the Python script will simply fail.
+    $aSettings = (@json_decode(file_get_contents(FILE_SETTINGS), true) ?? array());
     @file_put_contents(
         FILE_SETTINGS,
         json_encode(
-            array(
-                'housekeeping_genes' => $_POST['genes'],
-                'script_arguments' => '--input ' . FILE_INPUT . ' --genes ' . implode(' ', $_POST['genes'])
+            array_merge(
+                $aSettings,
+                array(
+                    'housekeeping_genes' => $_POST['genes'],
+                    'script_arguments' => '--input ' . FILE_INPUT . ' --genes ' . implode(' ', $_POST['genes'])
+                ),
             ),
             JSON_PRETTY_PRINT
         )
@@ -470,8 +488,6 @@ elseif (ACTION == 'store-all') {
         FILE_SETTINGS,
         json_encode(
             array_merge(
-                // This is just for the visual pleasure of keeping the keys in the proper order.
-                array_fill_keys(array('housekeeping_genes', 'controls', 'script_arguments'), ''),
                 $aSettings,
                 array(
                     'controls' => $_POST['controls'],
