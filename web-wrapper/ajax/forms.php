@@ -136,7 +136,7 @@ if (ACTION == 'upload') {
 
     // OK, ready for the next step.
     $aSettings = array_fill_keys(
-        array('input_file', 'housekeeping_genes', 'controls', 'script_arguments'),
+        array('input_file', 'housekeeping_genes', 'controls', 'script_arguments', 'output_file'),
         ''
     );
     $aSettings['input_file'] = $_FILES['file']['name'];
@@ -640,7 +640,35 @@ elseif (ACTION == 'download') {
 
     // OK, compress the data.
     @chdir(DATA_PATH . $sID);
-    $sFile = 'results.zip';
+    $aSettings = (@json_decode(file_get_contents(FILE_SETTINGS), true) ?? array());
+    if (!empty($aSettings['input_file'])) {
+        $sFile = 'results_' . preg_replace(
+            array(
+                '/\.xlsx?$/',
+                '/[^a-z0-9_-]/',
+            ),
+            array(
+                '',
+                '-',
+            ),
+            strtolower($aSettings['input_file'])
+        ) . '.zip';
+    } else {
+        $sFile = 'results.zip';
+    }
+    // Let's also store the name of the output file.
+    @file_put_contents(
+        FILE_SETTINGS,
+        json_encode(
+            array_merge(
+                $aSettings,
+                array(
+                    'output_file' => $sFile,
+                ),
+            ),
+            JSON_PRETTY_PRINT
+        )
+    );
     @exec(
         'zip ' . $sFile . ' *',
         $aOut,
@@ -702,7 +730,8 @@ elseif (ACTION == 'raw') {
     }
 
     @chdir(DATA_PATH . $sID);
-    $sFile = 'results.zip';
+    $aSettings = (@json_decode(file_get_contents(FILE_SETTINGS), true) ?? array());
+    $sFile = ($aSettings['output_file'] ?? 'results.zip');
     if (!file_exists($sFile)) {
         $sError = 'Could not fetch download.';
 ?>
