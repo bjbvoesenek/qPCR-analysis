@@ -26,7 +26,7 @@ if ((!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PR
 define('LANG', 'en_US');
 ?>
 <!DOCTYPE html>
-<HTML lang="<?php echo LANG; ?>">
+<html lang="<?php echo LANG; ?>">
 <head>
     <!-- Required meta tags -->
     <META http-equiv="Content-Type" content="text/html; charset=UTF-8">
@@ -44,9 +44,6 @@ define('LANG', 'en_US');
     <meta property="og:description" content="This script can be used after LinRegPCR analysis to plot your data in a clear way and automate the relative gene expression calculations.">
     <meta property="og:locale" content="<?php echo LANG; ?>">
     <meta property="og:site_name" content="Human Genetics, Leiden University Medical Center">
-
-    <style type="text/css">
-    </style>
 
     <script src="https://code.jquery.com/jquery-3.3.1.min.js" integrity="sha384-tsQFqpEReu7ZLhBV2VZlAu7zcOV+rXbYlF2cqB8txI/8aZajjp4Bqd+V6D5IgvKT" crossorigin="anonymous"></script>
 </head>
