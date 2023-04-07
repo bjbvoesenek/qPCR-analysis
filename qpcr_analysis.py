@@ -43,13 +43,9 @@ if os.access(os.getcwd(), os.W_OK) == False:
     sys.exit('Error: No rights to write files to the current directory.\n')
 
 # Check if analysis is already performed in the current directory
-if os.path.isdir("Input") or os.path.isdir("Figures") or os.path.isdir("Data"):
+if os.path.isdir("Data") or os.path.isdir("Figures"):
     sys.exit('Error: An analysis has already been performed in this folder. Please go to a different folder and run the script there.\n')
-        
-# Create subfolders to sort output
-os.mkdir('Input')
-os.mkdir('Figures')
-os.mkdir('Data')
+
 
 #%% Find unique primers and cell lines
 
@@ -96,6 +92,9 @@ unique_cell_lines = cell_lines.unique()
 #%% Store names of cell lines and primers in .txt files if user only provides Excel sheet
 
 if extract_data:
+    # Create directory so store information about the user input
+    os.mkdir('Input')
+    
     # Save names of used cell lines in .txt file
     sorted_unique_cell_lines = natsorted(unique_cell_lines)
     with open("Input/Cell_lines.txt", "w") as txt_file:
@@ -130,7 +129,11 @@ for cell_line in control:
         print("Error: The provided control '" + cell_line + "' could not be found in your data. Check if it's named correctly.\n")
         sys.exit(6)
 
+#%% Plot qPCR plots
 
+# Create directories to store plots and data
+os.mkdir('Figures')
+os.mkdir('Data')
 
 x = range(0, data.shape[1] - 1)
 
