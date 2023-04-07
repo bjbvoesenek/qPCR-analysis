@@ -36,6 +36,14 @@ else:
         input_file = args['input'][0]
         housekeeping_genes = args['genes']
         control = args['controls']
+
+# Check if the script has access to write files to the current directory
+if os.access(os.getcwd(), os.W_OK) == False:
+    sys.exit('Error: no rights to write files to the current directory')
+
+# Check if analysis is already performed in the current directory
+if os.path.isdir("Input") or os.path.isdir("Figures") or os.path.isdir("Data"):
+    sys.exit('Error: analysis is already performed in this folder. Go to a different folder and run the script')
         
 # Create subfolders to sort output
 import os
