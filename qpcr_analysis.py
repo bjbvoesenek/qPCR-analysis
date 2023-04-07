@@ -64,15 +64,15 @@ if 'Cq' in user_wb.sheetnames:
         qPCR_system = 'BioRad'
         data = data.reset_index(drop=True)
     else:
-        sys.exit('Error: Not sure whether this is a BioRad or LinRegPCR output file. Check the names of the sheets and columns and try again.\n')
+        sys.exit('Error: Not sure whether this is a BioRad or LinRegPCR output file. Check the names of the sheets and columns and try again.\nSee manual for more information.\n')
 elif 'Data' in user_wb.sheetnames:
     data = pd.read_excel(input_file, sheet_name='Data')
     if pd.Series(['input.txt', 'Text']).isin(data.columns).all(): # Second check, should return True if LinRegPCR was used
         qPCR_system = 'LinRegPCR'
     else:
-        sys.exit('Error: Not sure whether this is a BioRad or LinRegPCR output file. Check the names of the sheets and columns and try again.\n')
+        sys.exit('Error: Not sure whether this is a BioRad or LinRegPCR output file. Check the names of the sheets and columns and try again.\nSee manual for more information.\n')
 else:
-    print('Error: Sheet containing data not found in your input file. Make sure the sheets in your excel workbook are named correctly.\nSee the manual for more information.\n')
+    print('Error: Naming of sheets not recognized. Make sure the sheets in your excel workbook are named correctly.\nSee the manual for more information.\n')
     sys.exit(4)
 
 #%% For the BioRad system, remove wells without sample
