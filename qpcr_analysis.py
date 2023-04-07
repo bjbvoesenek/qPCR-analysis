@@ -37,16 +37,16 @@ else:
         housekeeping_genes = args['genes']
         control = args['controls']
 
+import os
 # Check if the script has access to write files to the current directory
 if os.access(os.getcwd(), os.W_OK) == False:
-    sys.exit('Error: no rights to write files to the current directory')
+    sys.exit('Error: No rights to write files to the current directory.\n')
 
 # Check if analysis is already performed in the current directory
 if os.path.isdir("Input") or os.path.isdir("Figures") or os.path.isdir("Data"):
-    sys.exit('Error: analysis is already performed in this folder. Go to a different folder and run the script')
+    sys.exit('Error: An analysis has already been performed in this folder. Please go to a different folder and run the script there.\n')
         
 # Create subfolders to sort output
-import os
 os.mkdir('Input')
 os.mkdir('Figures')
 os.mkdir('Data')
@@ -108,7 +108,6 @@ if extract_data:
         for line in sorted_unique_primers:
             txt_file.write(line + "\n")
 
-    import os
     print(
         "Successfully stored all cell lines and genes from the input to text files.\n" +
         "Please select your housekeeping genes and control cell lines and use --genes and --controls to pass them to this program.\n" +
