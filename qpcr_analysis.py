@@ -133,7 +133,11 @@ unique_cell_lines = cell_lines.unique()
 
 #%% Store names of cell lines and primers in .txt files if user only provides Excel sheet
 
-if extract_data:
+if extract_data:    
+    # Check if analysis is already performed in the current directory
+    if os.path.isdir("Input"):
+        sys.exit('Error: An analysis has already been performed in this folder. Please go to a different folder and run the script there.\n')
+    
     # Create directory so store information about the user input
     os.mkdir('Input')
     
