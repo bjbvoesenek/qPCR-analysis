@@ -15,6 +15,22 @@ As input, both the LightCycler 480 and Bio-Rad systems are suitable,
 
 
 
+## Table of contents
+- [Installation](#installation)  
+  - [Web interface](#web-interface)
+    - [Maintenance of the web interface](#maintenance-of-the-web-interface)
+- [How to use qPCR-analysis](#how-to-use-qpcr-analysis)
+  - [Preparing the LightCycler 480 output](#preparing-the-lightcycler-480-output)
+  - [Preparing the Bio-Rad output](#preparing-the-bio-rad-output)
+  - [The qPCR analysis](#the-qpcr-analysis)
+  - [Using the web interface](#using-the-web-interface)
+- [Structure of the output](#structure-of-the-output) 
+  - [The "Data" directory](#the-data-directory)
+  - [The "Figures" directory](#the-figures-directory)
+  - [The "Input" directory](#the-input-directory)
+
+
+
 ## Installation
 
 qPCR-analysis has been developed with, and tested on, various versions of Python
@@ -98,7 +114,7 @@ If you exported melting curves from the LightCycler 480, copy the content
  of the .txt file to your Excel file in a new sheet named "Melting curves".
 Delete the columns (both X and Sample) of empty wells.
 
-![](doc-images/LinReg_Melting curves.png)
+![](doc-images/LinReg_melting_curves.png)
 
 From here, continue with [the qPCR analysis](#the-qpcr-analysis).
 
@@ -116,7 +132,7 @@ Name this sheet "Melting curves".
 
 ![](doc-images/BioRad_Cq.png)
 
-![](doc-images/BioRad_Melting curves.png) 
+![](doc-images/BioRad_melting_curves.png) 
 
 From here, continue with [the qPCR analysis](#the-qpcr-analysis).
 
@@ -209,7 +225,7 @@ The melting curves and amplification plots are sorted in a way that every
  row is a cell line, and every column a gene.
 This makes it easy to compare cell lines and see which samples are different.
 
-![](doc-images/Amplification curves.png)
+![](doc-images/amplification_curves.png)
 
 Other figures include bargraphs showing the triplicate average
 Ct value of each sample, the relative expression values of each sample,
