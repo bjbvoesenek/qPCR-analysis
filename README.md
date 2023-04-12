@@ -1,6 +1,7 @@
+## **qPCR analysis web-interface**
 The qPCR analysis web-interface is designed to conveniently and intuitively plot amplification plots and melting curves. In addition, it automates the calculation of the relative gene expression, calculates the efficiency of every primerset used,  and plots this data in a clear way. Both the LightCycler480 and BioRad systems are suitable, but require different preparation of the Excel files
 
-**Analysis of the LightCycler480 output**
+## **Analysis of the LightCycler480 output**
 Before using the qPCR-analysis website, the data coming out of the LightCycler480 needs to be transposed. Use the http://humgen.nl/scripts/transpose/ website and use the manual written before by Maurice Overzier.
 After copying the data to excel, remove the data from empty wells (wells of the plate where you did not pipet anything in). Name this sheet ‘Data’. Name every sample as following: cell_primer (eg. Control1_GAPDH).
 
@@ -27,12 +28,12 @@ The ‘Data’ folder contains Excel sheets with the average Ct per condition or
 
 
 
-**Analysis of the BioRad output**
+## **Analysis of the BioRad output**
 Before uploading the excel file to the website, there are a few steps you need to do. Firstly, rename the sheet containing the Cq values to ‘Cq’. In the column ‘Sample’, name the samples containing the mq control ‘mq’ or ‘MQ’. If you exported melting curves, copy the content to a new sheet in your excel file that you are going to analyze. Rename this sheet to ‘Melting curves’.
  
 <img src="https://github.com/bjbvoesenek/qPCR-analysis/blob/Add-Biorad-compatability/Markdown images/BioRad_Cq.png">
 
-<img src="https://github.com/bjbvoesenek/qPCR-analysis/blob/Add-Biorad-compatability/Markdown images/BioRad_Melting_curves.png"> 
+<img src="https://github.com/bjbvoesenek/qPCR-analysis/blob/Add-Biorad-compatability/Markdown images/BioRad_Melting curves.png"> 
 
 Go to https://humgen.nl/scripts/qPCR-analysis/ and upload your Excel(*.xlsx) file that you want to analyze. Press ‘Submit’ and follow further instructions on the website.
 
