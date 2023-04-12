@@ -37,6 +37,16 @@ else:
         housekeeping_genes = args['genes']
         control = args['controls']
 
+import os
+# Check if the script has access to write files to the current directory
+if os.access(os.getcwd(), os.W_OK) == False:
+    sys.exit('Error: No rights to write files to the current directory.\n')
+
+# Check if analysis is already performed in the current directory
+if os.path.isdir("Data") or os.path.isdir("Figures"):
+    sys.exit('Error: An analysis has already been performed in this folder. Please go to a different folder and run the script there.\n')
+
+
 #%% Find unique primers and cell lines
 
 import pandas as pd
@@ -82,19 +92,25 @@ unique_cell_lines = cell_lines.unique()
 #%% Store names of cell lines and primers in .txt files if user only provides Excel sheet
 
 if extract_data:
+    # Check if analysis is already performed in the current directory
+    if os.path.isdir("Input"):
+        sys.exit('Error: An analysis has already been performed in this folder. Please go to a different folder and run the script there.\n')
+
+    # Create directory so store information about the user input
+    os.mkdir('Input')
+    
     # Save names of used cell lines in .txt file
     sorted_unique_cell_lines = natsorted(unique_cell_lines)
-    with open("Cell_lines.txt", "w") as txt_file:
+    with open("Input/Cell_lines.txt", "w") as txt_file:
         for line in sorted_unique_cell_lines:
             txt_file.write(line + "\n")
 
     # Save names of used cell lines in .txt file
     sorted_unique_primers = natsorted(unique_primers)
-    with open("Genes.txt", "w") as txt_file:
+    with open("Input/Genes.txt", "w") as txt_file:
         for line in sorted_unique_primers:
             txt_file.write(line + "\n")
 
-    import os
     print(
         "Successfully stored all cell lines and genes from the input to text files.\n" +
         "Please select your housekeeping genes and control cell lines and use --genes and --controls to pass them to this program.\n" +
@@ -117,7 +133,11 @@ for cell_line in control:
         print("Error: The provided control '" + cell_line + "' could not be found in your data. Check if it's named correctly.\n")
         sys.exit(6)
 
+#%% Plot qPCR plots
 
+# Create directories to store plots and data
+os.mkdir('Figures')
+os.mkdir('Data')
 
 x = range(0, data.shape[1] - 1)
 
@@ -155,7 +175,7 @@ for i in range(len(index)):
     ax.set_title(sample_names[index[i]], fontsize = 30)
     name_counter = name_counter + 1
 
-plt.savefig('qPCR_plots_sorted.pdf', bbox_inches='tight')
+plt.savefig('Figures/qPCR_plots_sorted.pdf', bbox_inches='tight')
 
 #%% Plot melting curves
 
@@ -192,7 +212,7 @@ if 'Melting curves' in user_wb.sheetnames:
         name_counter = name_counter + 1
         index_number += 1
 
-    plt.savefig('Melting_curves_sorted.pdf', bbox_inches='tight')
+    plt.savefig('Figures/Melting_curves_sorted.pdf', bbox_inches='tight')
 else:
     print('Sheet [Melting curves] not found in your input file. Continuing to the next step...')
 
@@ -302,10 +322,10 @@ for i in range(0,len(unique_primers)):
        ax.scatter([i] * nr_replicates, temp_df.iloc[i,1:1+nr_replicates].values.tolist(), marker='o', c='k', s=5)
 
 
-plt.savefig('Average_Ct_bargraph.pdf', bbox_inches='tight')
+plt.savefig('Figures/Average_Ct_bargraph.pdf', bbox_inches='tight')
 
 avg_Ct_df.index = temp_samples
-avg_Ct_df.to_excel("Average_Ct_values.xlsx")
+avg_Ct_df.to_excel("Data/Average_Ct_values.xlsx")
 
 #%% Calculate relative expression (variable number of housekeeping genes)
 
@@ -351,7 +371,7 @@ for index, row in ddCt_df.iterrows():
 
 # Save relative ddCt values to excel
 rel_ddCt_df.columns = original_col_names
-rel_ddCt_df.to_excel("Relative_expression_values.xlsx")
+rel_ddCt_df.to_excel("Data/Relative_expression_values.xlsx")
 
 # Remove H2O sample before plotting
 rel_ddCt_df = rel_ddCt_df.drop('H2O')
@@ -386,7 +406,7 @@ for i in range(0,len(unique_primers)):
     plt.ylim(0,y_max)
     plt.title(unique_primers[i])
 
-plt.savefig('Relative_expression_values.pdf', bbox_inches='tight')
+plt.savefig('Figures/Relative_expression_values.pdf', bbox_inches='tight')
 
 #%% Plot primer efficiency
 
@@ -430,7 +450,7 @@ plt.axhline(y=1.8, color='k', ls='--')
 for i in range(len(unique_primers)):
    ax.scatter([i] * nr_replicates * (nr_samples-1), primers_sorted.iloc[i,1:nr_replicates * (nr_samples-1) + 1].values.tolist(), marker='o', c='k', s=5)
 
-plt.savefig('Primer_efficiency.pdf', bbox_inches='tight')
+plt.savefig('Figures/Primer_efficiency.pdf', bbox_inches='tight')
 
 #%% Quit script
 # Indicate a successful ending of the script. The web wrapper requires this, as the script can generate output

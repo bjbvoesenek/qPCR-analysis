@@ -4,7 +4,7 @@
  * Web wrapper for Bas Voesenek's qPCR analysis script.
  *
  * Created     : 2023-03-23
- * Modified    : 2023-04-05
+ * Modified    : 2023-04-11
  *
  * Copyright   : 2023 Leiden University Medical Center; http://www.LUMC.nl/
  * Programmer  : Ivo F.A.C. Fokkema <I.F.A.C.Fokkema@LUMC.nl>
@@ -24,10 +24,10 @@ if (ini_get('session.cookie_path') == '/') {
 @session_start();
 
 define('DATA_PATH', ROOT_PATH . 'data/');
-define('FILE_INPUT', 'input.xlsx');
-define('FILE_GENES', 'Genes.txt');
-define('FILE_CELL_LINES', 'Cell_lines.txt');
-define('FILE_SETTINGS', 'settings.json');
+define('FILE_INPUT', 'input.xlsx'); // Will be moved to Input later.
+define('FILE_GENES', 'Input/Genes.txt');
+define('FILE_CELL_LINES', 'Input/Cell_lines.txt');
+define('FILE_SETTINGS', 'settings.json'); // Will be moved to Input later.
 header('Content-type: text/javascript; charset=UTF-8');
 
 // Note that we'll have to do this in steps. The script will take quite some time to complete.
@@ -121,6 +121,7 @@ if (ACTION == 'upload') {
     $b = (
         @mkdir(DATA_PATH . $sID) &&
         @chdir(DATA_PATH . $sID) &&
+        // We're not creating "Input" yet for the input.xlsx to reside in, because then the qPCR script won't run.
         @move_uploaded_file($_FILES['file']['tmp_name'], FILE_INPUT)
     );
     if (!$b) {
@@ -340,8 +341,6 @@ if (ACTION == 'get-cell-lines') {
     }
 
     // If we get here, no errors were encountered with the input.
-    @unlink(FILE_GENES);
-
     // Fetch the cell line list.
     $aCellLines = file(FILE_CELL_LINES, FILE_IGNORE_NEW_LINES);
     $sCellLines = implode(
@@ -481,7 +480,6 @@ elseif (ACTION == 'store-all') {
     }
 
     // OK, ready for the next step.
-    @unlink(FILE_CELL_LINES);
     // We don't check what we're doing with the settings. If this all fails, the Python script will simply fail.
     $aSettings = (@json_decode(file_get_contents(FILE_SETTINGS), true) ?? array());
     @file_put_contents(
@@ -640,6 +638,8 @@ elseif (ACTION == 'download') {
 
     // OK, compress the data.
     @chdir(DATA_PATH . $sID);
+    // Move the input file.
+    @rename(FILE_INPUT, "Input/" . FILE_INPUT);
     $aSettings = (@json_decode(file_get_contents(FILE_SETTINGS), true) ?? array());
     if (!empty($aSettings['input_file'])) {
         $sFile = 'results_' . preg_replace(
@@ -669,8 +669,10 @@ elseif (ACTION == 'download') {
             JSON_PRETTY_PRINT
         )
     );
+    // Now also move the settings file.
+    @rename(FILE_SETTINGS, "Input/" . FILE_SETTINGS);
     @exec(
-        'zip ' . $sFile . ' *',
+        'zip -r ' . $sFile . ' *',
         $aOut,
         $nReturnCode
     );
@@ -739,7 +741,7 @@ elseif (ACTION == 'raw') {
     }
 
     @chdir(DATA_PATH . $sID);
-    $aSettings = (@json_decode(file_get_contents(FILE_SETTINGS), true) ?? array());
+    $aSettings = (@json_decode(file_get_contents('Input/' . FILE_SETTINGS), true) ?? array());
     $sFile = ($aSettings['output_file'] ?? 'results.zip');
     if (!file_exists($sFile)) {
         // We're in an iframe, so sadly, we'll need to do some extra work.
