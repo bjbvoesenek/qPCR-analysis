@@ -23,7 +23,8 @@ As input, both the LightCycler 480 and Bio-Rad systems are suitable,
   - [Preparing the LightCycler 480 output](#preparing-the-lightcycler-480-output)
   - [Preparing the Bio-Rad output](#preparing-the-bio-rad-output)
   - [The qPCR analysis](#the-qpcr-analysis)
-  - [Using the web interface](#using-the-web-interface)
+    - [Through the terminal](#through-the-terminal)
+    - [Using the web interface](#using-the-web-interface)
 - [Structure of the output](#structure-of-the-output) 
   - [The "Data" directory](#the-data-directory)
   - [The "Figures" directory](#the-figures-directory)
@@ -241,3 +242,5 @@ The `Input` folder contains the following files:
 - `input.xlsx` — your input file *(web interface only)*
 - `settings.json` — a structured text file containing the settings
    with which the web interface was run
+
+[comment]: # (pandoc README.md -f gfm -V geometry:a4paper -V geometry:margin=2cm -V fontsize=12pt -V mainfont="Myriad Pro Light" --pdf-engine=xelatex -o README.pdf)
