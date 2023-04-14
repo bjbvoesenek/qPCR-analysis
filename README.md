@@ -43,6 +43,13 @@ qPCR-analysis has the following requirements:
 - natsort (6.0.0 – 8.2.0)
 - pandas (0.23.0 – 1.3.5)
 
+The project includes an `requirements.txt` that can be used to quickly install
+ all dependencies:
+
+```
+pip3 install -r requirements.txt
+```
+
 
 
 ### Web interface
