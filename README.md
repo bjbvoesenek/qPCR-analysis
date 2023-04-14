@@ -93,7 +93,7 @@ The full workflow of using qPCR-analysis depends on your input.
 Before using the qPCR-analysis software,
  the data coming out of the LightCycler 480 needs to be transposed.
 For this, you can use the http://humgen.nl/scripts/transpose/ website,
- and use the manual written before by Maurice Overzier.
+ and use the 'qPCR manual' written before.
 #### TODO: Manual should be included on the Transpose website, or copied here.
 After copying the result from the transpose process to Excel, remove the data
  from empty wells (wells of the plate where you did not pipet anything in).
