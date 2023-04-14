@@ -4,7 +4,7 @@
  * Web wrapper for Bas Voesenek's qPCR analysis script.
  *
  * Created     : 2023-03-22
- * Modified    : 2023-04-04
+ * Modified    : 2023-04-14
  *
  * Copyright   : 2023 Leiden University Medical Center; http://www.LUMC.nl/
  * Programmer  : Ivo F.A.C. Fokkema <I.F.A.C.Fokkema@LUMC.nl>
@@ -14,6 +14,8 @@
 define('ROOT_PATH', './');
 require ROOT_PATH . 'inc-lib.php';
 define('DATA_PATH', ROOT_PATH . 'data/');
+
+$sVersion = getVersion();
 
 // Find out if we're using SSL.
 if ((!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] == 'https') || (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] != 'off') || !empty($_SERVER['SSL_PROTOCOL'])) {
@@ -50,7 +52,7 @@ define('LANG', 'en_US');
 <body>
 
     <div class="container my-4">
-        <h1>qPCR Analysis Web Interface</h1>
+        <h1>qPCR Analysis <?= ($sVersion ?? ''); ?> Web Interface</h1>
 
 <?php
 // Check the data directory.
