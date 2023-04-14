@@ -99,22 +99,25 @@ The full workflow of using qPCR-analysis depends on your input.
 
 Before using the qPCR-analysis software,
  the data coming out of the LightCycler 480 needs to be transposed.
-For this, you can use the http://humgen.nl/scripts/transpose/ website,
- and use the 'qPCR manual' written before.
-#### TODO: Manual should be included on the Transpose website, or copied here.
-After copying the result from the transpose process to Excel, remove the data
- from empty wells (wells of the plate where you did not pipet anything in).
+For this, you can use the http://humgen.nl/scripts/transpose/ website.
+Copy the resulting text file from the transpose website to Excel, and remove the
+ data from empty wells (wells of the plate where you did not pipet anything in).
 Name this sheet "Data".
 Name every sample as follows: "cell_primer" (e.g., "Control1_GAPDH").
 
 ![](doc-images/LinReg_Data.png)
 
-Continue following the steps from the manual,
+For the following steps, we refer to the manual "[RT-qPCR experiment and
+ analysis using LinRegPCR](LightCycler_480_LinRegPCR_manual.pdf)", written by
+ Maurice Overzier, which we have included in this package for convenience.
+
+Continue following the steps from the manual, pages 12 to 14,
  using the "Determine Baselines" function in LinRegPCR.
-#### TODO: Copy the steps from the manual here, or choose to simply refer to it.
 This will create two new sheets; "Data_output" and "Data_compact".
 Do not change the names of these sheets,
  or any of the column names within these sheets.
+If you run into any problems with LinReqPCR, check the rest of the manual to see
+ if your steps match the manual's instructions.
 
 ![](doc-images/LinReg_Data_compact.png)
 
