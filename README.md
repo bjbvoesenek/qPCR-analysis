@@ -145,6 +145,7 @@ If the efficiency is lower than 1.80, one of the following could be the cause:
  the samples may contain PCR inhibitors (if so, use cDNA that is more diluted),
  primer design is not optimal or inaccurate sample/master mix pipetting.
 In the ‘compact’ tab you’ll still see averaged PCR efficiency values.
+In case you want to remove outliers, delete the Ct value of the sample in the 'compact' tab.
 
 ![](doc-images/LinReg_Data_compact.png)
 
