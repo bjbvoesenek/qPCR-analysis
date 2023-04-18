@@ -100,6 +100,15 @@ The full workflow of using qPCR-analysis depends on your input.
 Before using the qPCR-analysis software,
  the data coming out of the LightCycler 480 needs to be transposed.
 For this, you can use the http://humgen.nl/scripts/transpose/ website.
+Upload the .txt file that was obtained by retrieving the data from LightCycler 480 by pressing ‘Bestand kiezen’,
+ set the amount of PCR cycles to 45 (or another amount if you used a different RT-qPCR protocol) and press ‘Transpose’.
+
+Open a new Excel file and make sure to first change the system separators to the settings as shown below.
+If the box is ticked, untick the box and change the decimal and thouseands separators.
+Restart Excel after this change.
+
+![](doc-images/Excel_system_separators.png)
+
 Copy the resulting text file from the transpose website to Excel, and remove the
  data from empty wells (wells of the plate where you did not pipet anything in).
 Name this sheet "Data".
@@ -107,17 +116,35 @@ Name every sample as follows: "cell_primer" (e.g., "Control1_GAPDH").
 
 ![](doc-images/LinReg_Data.png)
 
-For the following steps, we refer to the manual "[RT-qPCR experiment and
- analysis using LinRegPCR](LightCycler_480_LinRegPCR_manual.pdf)", written by
- Maurice Overzier, which we have included in this package for convenience.
+Next, data needs to be normalized in LinRegPCR.
+Open LinRegPCR and click 'File', then 'Read from Excel'.
 
-Continue following the steps from the manual, pages 12 to 14,
- using the "Determine Baselines" function in LinRegPCR.
-This will create two new sheets; "Data_output" and "Data_compact".
-Do not change the names of these sheets,
- or any of the column names within these sheets.
-If you run into any problems with LinReqPCR, check the rest of the manual to see
- if your steps match the manual's instructions.
+A new window opens and select the boxes as shown below. During RT-qPCR a DNA-binding dye was used (Sybr Green),
+ ds-DNA was used as amplification and a LightCycler 480 was used to convert the raw data files.
+In the ‘Book’ drop down menu, you’ll see the name of the Excel file you’re working in.
+LinRegPCR can only read from one Excel file at a time, so it’s important to close all other Excel files.
+In the ‘Sheet’ drop down menu, select the tab containing the raw data from the Excel file (‘Data’).
+At the bottom, enter the columns running from ‘A’ through ‘AU’ (this is always the case) and enter the amount of rows (from ‘1’ through x, check your Excel file). Press ‘OK’.
+Click 'Determine Baselines' in the top left corner.
+
+![](doc-images/LinReg_read_Excel.png)
+
+In order to save the data to your Excel file,
+ click 'File', then 'Save to Excel'.
+Use the settings as shown below.
+
+![](doc-images/LinReg_save_to_Excel.png)
+
+After calculating, LinRegPCR adds two new tabs to your Excel file; an ‘output’ tab and a ‘compact’ tab (shown below).
+Do not change the names of these tabs or any of the columns within these tabs.
+In the output tab, under ‘indiv PCR eff’ you can find the efficiencies of the primers per sample.
+This efficiency is calculated by quantifying the amount of newly formed amplicon after each PCR cycle.
+So in theory, this number should be 2.00, because you expect that after each cycle, the amount of PCR product is doubled.
+In practice, the PCR efficiency is somewhere between 1.80-1.90.
+If the efficiency is lower than 1.80, one of the following could be the cause:
+ the samples may contain PCR inhibitors (if so, use cDNA that is more diluted),
+ primer design is not optimal or inaccurate sample/master mix pipetting.
+In the ‘compact’ tab you’ll still see averaged PCR efficiency values.
 
 ![](doc-images/LinReg_Data_compact.png)
 
