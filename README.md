@@ -91,7 +91,11 @@ If you want the cronjob to create output, add a "v" at the end of the command,
 
 ## How to use qPCR-analysis
 
-The full workflow of using qPCR-analysis depends on your input.
+The full workflow of using qPCR-analysis depends on your input,
+ see below for instructions.
+A more detailed explanation about the processing of the LightCycler 480 can be
+ found [in this manual](LightCycler_480_LinRegPCR_manual.pdf).
+Here, you can also find how the relative gene expression is calculated.
 
 
 
