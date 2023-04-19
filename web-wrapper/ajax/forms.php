@@ -4,7 +4,7 @@
  * Web wrapper for Bas Voesenek's qPCR analysis script.
  *
  * Created     : 2023-03-23
- * Modified    : 2023-04-11
+ * Modified    : 2023-04-14
  *
  * Copyright   : 2023 Leiden University Medical Center; http://www.LUMC.nl/
  * Programmer  : Ivo F.A.C. Fokkema <I.F.A.C.Fokkema@LUMC.nl>
@@ -118,6 +118,8 @@ if (ACTION == 'upload') {
 
     // If we get here, no errors were encountered with the input. Process the file.
     $sID = str_pad(microtime(true), 15, '0');
+    // Get the version before we change directory, otherwise, it won't work.
+    $sVersion = getVersion();
     $b = (
         @mkdir(DATA_PATH . $sID) &&
         @chdir(DATA_PATH . $sID) &&
@@ -137,9 +139,11 @@ if (ACTION == 'upload') {
 
     // OK, ready for the next step.
     $aSettings = array_fill_keys(
-        array('input_file', 'housekeeping_genes', 'controls', 'script_arguments', 'output_file'),
+        array('version', 'time_start', 'input_file', 'housekeeping_genes', 'controls', 'script_arguments', 'time_end', 'output_file'),
         ''
     );
+    $aSettings['version'] = $sVersion;
+    $aSettings['time_start'] = date('Y-m-d H:i:s P (T)');
     $aSettings['input_file'] = $_FILES['file']['name'];
     @file_put_contents(
         FILE_SETTINGS,
@@ -663,6 +667,7 @@ elseif (ACTION == 'download') {
             array_merge(
                 $aSettings,
                 array(
+                    'time_end' => date('Y-m-d H:i:s P (T)'),
                     'output_file' => $sFile,
                 ),
             ),

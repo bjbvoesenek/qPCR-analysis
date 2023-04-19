@@ -4,12 +4,40 @@
  * Web wrapper for Bas Voesenek's qPCR analysis script.
  *
  * Created     : 2023-03-22
- * Modified    : 2023-04-04
+ * Modified    : 2023-04-14
  *
  * Copyright   : 2023 Leiden University Medical Center; http://www.LUMC.nl/
  * Programmer  : Ivo F.A.C. Fokkema <I.F.A.C.Fokkema@LUMC.nl>
  *
  *************/
+
+function getVersion ()
+{
+    static $sVersion = '';
+
+    if ($sVersion) {
+        return $sVersion;
+    }
+
+    if (!defined('ROOT_PATH')) {
+        return false;
+    }
+
+    // Try executing the Python script to get the version.
+    @exec(
+        'python3 ' . ROOT_PATH . '../qpcr_analysis.py --version 2>&1',
+        $aOut,
+        $nReturnCode
+    );
+    if (!$nReturnCode && $aOut && count($aOut) == 1) {
+        $sVersion = substr(strstr($aOut[0], ' '), 1);
+    }
+    return $sVersion;
+}
+
+
+
+
 
 function lovd_cleanDirName ($s)
 {

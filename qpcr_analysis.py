@@ -3,12 +3,18 @@
 Script for automating the analysis of qPCR data
 """
 
+__version_info__ = ('2','0','0')
+__version__ = '.'.join(__version_info__)
+
 #%% Check user input
 import sys
 # input to script from web page: python qpcr_analysis.py --input Analysis.xlsx --genes GAPDH Bactin --controls Control1 Control2 FLB240
 
 import argparse
 parser = argparse.ArgumentParser(description='Automated analysis of qPCR data exported from LinRegPCR')
+parser.add_argument(
+    '--version', action='version',
+    version='%(prog)s {version}'.format(version=__version__))
 parser.add_argument(
     '--input', action='store', nargs=1, required=True, metavar='<input file>',
     help='an .xlsx saved from LinRegPCR')
