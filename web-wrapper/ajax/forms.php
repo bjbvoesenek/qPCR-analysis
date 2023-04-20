@@ -4,7 +4,7 @@
  * Web wrapper for Bas Voesenek's qPCR analysis script.
  *
  * Created     : 2023-03-23
- * Modified    : 2023-03-31
+ * Modified    : 2023-04-14
  *
  * Copyright   : 2023 Leiden University Medical Center; http://www.LUMC.nl/
  * Programmer  : Ivo F.A.C. Fokkema <I.F.A.C.Fokkema@LUMC.nl>
@@ -24,10 +24,15 @@ if (ini_get('session.cookie_path') == '/') {
 @session_start();
 
 define('DATA_PATH', ROOT_PATH . 'data/');
+define('FILE_INPUT', 'input.xlsx'); // Will be moved to Input later.
+define('FILE_GENES', 'Input/Genes.txt');
+define('FILE_CELL_LINES', 'Input/Cell_lines.txt');
+define('FILE_SETTINGS', 'settings.json'); // Will be moved to Input later.
 header('Content-type: text/javascript; charset=UTF-8');
 
 // Note that we'll have to do this in steps. The script will take quite some time to complete.
 // We can't send asynchronous updates to the page.
+define('CURRENT_PATH', substr(lovd_getProjectFile(), 1));
 define('ACTION', current(array_keys($_GET)));
 if (!ACTION) {
     die('
@@ -40,7 +45,7 @@ if (!ACTION) {
 
 if (ACTION == 'upload') {
     // Check whether all required input was given.
-    if (empty($_FILES) || empty($_POST['housekeeping1']) || empty($_POST['housekeeping2'])) {
+    if (empty($_FILES)) {
         // Client-side checks have been bypassed.
         die('
         $("form input").removeClass(["is-valid", "is-invalid"]).filter(function() { return $(this).val() == ""; }).addClass("is-invalid");');
@@ -51,7 +56,7 @@ if (ACTION == 'upload') {
 
 
 
-    // Handle the file uploads.
+    // Handle the file upload.
     // Determine max file upload size in bytes.
     $nMaxSizeLOVD = 5 * 1024 * 1024; // 5MB = our limit.
     $nMaxSize = min($nMaxSizeLOVD,
@@ -113,7 +118,14 @@ if (ACTION == 'upload') {
 
     // If we get here, no errors were encountered with the input. Process the file.
     $sID = str_pad(microtime(true), 15, '0');
-    $b = (@mkdir(DATA_PATH . $sID) && @move_uploaded_file($_FILES['file']['tmp_name'], DATA_PATH . $sID . '/input.xlsx'));
+    // Get the version before we change directory, otherwise, it won't work.
+    $sVersion = getVersion();
+    $b = (
+        @mkdir(DATA_PATH . $sID) &&
+        @chdir(DATA_PATH . $sID) &&
+        // We're not creating "Input" yet for the input.xlsx to reside in, because then the qPCR script won't run.
+        @move_uploaded_file($_FILES['file']['tmp_name'], FILE_INPUT)
+    );
     if (!$b) {
 ?>
         lovd_updateModal({
@@ -126,14 +138,24 @@ if (ACTION == 'upload') {
     }
 
     // OK, ready for the next step.
-    @file_put_contents(DATA_PATH . $sID . '/arguments.txt', 'input.xlsx ' . $_POST['housekeeping1'] . ' ' . $_POST['housekeeping2']);
+    $aSettings = array_fill_keys(
+        array('version', 'time_start', 'input_file', 'housekeeping_genes', 'controls', 'script_arguments', 'time_end', 'output_file'),
+        ''
+    );
+    $aSettings['version'] = $sVersion;
+    $aSettings['time_start'] = date('Y-m-d H:i:s P (T)');
+    $aSettings['input_file'] = $_FILES['file']['name'];
+    @file_put_contents(
+        FILE_SETTINGS,
+        json_encode($aSettings, JSON_PRETTY_PRINT)
+    );
     $_SESSION['csrf_tokens']['upload'][$sID] = md5(uniqid());
 ?>
     lovd_updateModal({
-        "title": "Data successfully received, running the analysis..."
+        "title": "Data successfully received, extracting the data..."
     });
     $.post({
-        url: $("form").attr("action") + "?process",
+        url: "<?= CURRENT_PATH; ?>?get-genes",
         data: {
             "jobID": "<?php echo $sID; ?>",
             "csrf_token": "<?php echo $_SESSION['csrf_tokens']['upload'][$sID]; ?>"
@@ -143,10 +165,373 @@ if (ACTION == 'upload') {
             lovd_updateModal({
                 "title": "Error",
                 "classes": ["border-danger", "bg-danger", "text-white"],
-                "body": "Failed to request the processing of the data. Please try again later or contact I.F.A.C.Fokkema@LUMC.nl for help and notify him of the job ID: <?php echo $sID; ?>."
+                "body": "Failed to request the extraction of the data. Please try again later or contact I.F.A.C.Fokkema@LUMC.nl for help and notify him of the job ID: <?php echo $sID; ?>."
             });
         }
     });
+<?php
+    exit;
+}
+
+
+
+
+
+elseif (ACTION == 'get-genes') {
+    // What genes were found in the input file? Let the user choose the housekeeping genes.
+    $sID = ($_POST['jobID'] ?? '');
+    $sCSRF = ($_POST['csrf_token'] ?? '');
+    if (empty($_SESSION['csrf_tokens']['upload'][$sID])
+        || $_SESSION['csrf_tokens']['upload'][$sID] != $sCSRF) {
+?>
+        lovd_updateModal({
+            "title": "Error",
+            "classes": ["border-danger", "bg-danger", "text-white"],
+            "body": "Sorry, there was an error verifying the data. Try reloading the page, and submitting the file again."
+        });
+<?php
+        exit;
+    }
+
+    // OK, run the script to get the gene list.
+    @chdir(DATA_PATH . $sID);
+    $aOut = array();
+    @exec(
+        'python3 ../../../qpcr_analysis.py --input ' . FILE_INPUT . ' 2>&1',
+        $aOut,
+        $nReturnCode
+    );
+    $sOut = implode("\n", $aOut);
+
+    // To check if it worked, we will check the return code and check for the file.
+    $sError = '';
+    if ($nReturnCode !== 0 || !file_exists(FILE_GENES)) {
+        $sError = 'The analysis program reported an error.';
+        if ($aOut) {
+            $sError .= "<BR>" . implode("<BR>", array_map('htmlspecialchars', $aOut));
+        }
+?>
+        lovd_updateModal({
+            "title": "Error",
+            "classes": ["border-danger", "bg-danger", "text-white"],
+            "body": "Sorry, there was an error extracting the data.<BR><?php echo $sError; ?>"
+        });
+<?php
+        exit;
+    }
+
+    // Fetch the gene list.
+    $aGenes = file(FILE_GENES, FILE_IGNORE_NEW_LINES);
+    $sGenes = implode(
+        ' ',
+        array_map(
+            function ($sGene)
+            {
+                // Not sure why Bootstrap doesn't allow us to place the checkbox inside the label.
+                $sID = preg_replace('/[^a-z0-9-]/', '-', strtolower($sGene));
+                return
+                    '<input type="checkbox" class="btn-check" name="genes[]" id="btn-check-' . $sID . '" value="' . $sGene . '">' .
+                    '<label class="btn btn-outline-primary mb-1" for="btn-check-' . $sID . '">' . $sGene . '</label>';
+            },
+            $aGenes
+        )
+    );
+
+    // OK, ready for the next step.
+    $_SESSION['csrf_tokens']['upload'][$sID] = md5(uniqid());
+?>
+    lovd_updateModal({
+        "size": "lg",
+        "title": "Please select your housekeeping genes",
+        "classes": [],
+        "body": '<form><?php echo $sGenes; ?></form>',
+        "buttons": [["primary", "Submit"]]
+    });
+    $(function ()
+    {
+        oModal.find("form").submit(
+            function (e)
+            {
+                e.preventDefault();
+
+                // Only submit if the form is valid (required fields are filled in, etc).
+                var nCheckBoxes = $(this).find("input[type=checkbox]:checked").length;
+                if (!nCheckBoxes) {
+                    $(this).prepend('<div class="alert alert-danger mb-3" role="alert">Please select at least one housekeeping gene.</div>');
+                    return false;
+                }
+
+                var formData = new FormData(this);
+                formData.append("jobID", "<?php echo $sID; ?>");
+                formData.append("csrf_token", "<?php echo $_SESSION['csrf_tokens']['upload'][$sID]; ?>");
+                // Turn off the submit button, but keep the form. We might need to post errors there.
+                oModal.find("button").prop("disabled", true).append(' <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>');
+
+                $.post({
+                    url: "<?= CURRENT_PATH; ?>?get-cell-lines",
+                    data: formData,
+                    contentType: false, // Required, fails otherwise.
+                    processData: false, // Required, fails otherwise.
+                    error: function ()
+                    {
+                        lovd_updateModal({
+                            "title": "Error",
+                            "classes": ["border-danger", "bg-danger", "text-white"],
+                            "body": "Failed to request the cell line listing. Please try again later or contact I.F.A.C.Fokkema@LUMC.nl for help and notify him of the job ID: <?php echo $sID; ?>.",
+                            "buttons": []
+                        });
+                    }
+                });
+            }
+        );
+    });
+<?php
+    exit;
+}
+
+
+
+
+
+if (ACTION == 'get-cell-lines') {
+    // Process given housekeeping genes, and ask user for the control cell lines.
+    // What genes were found in the input file? Let the user choose the housekeeping genes.
+    $sID = ($_POST['jobID'] ?? '');
+    $sCSRF = ($_POST['csrf_token'] ?? '');
+    if (empty($_SESSION['csrf_tokens']['upload'][$sID])
+        || $_SESSION['csrf_tokens']['upload'][$sID] != $sCSRF) {
+?>
+        lovd_updateModal({
+            "title": "Error",
+            "classes": ["border-danger", "bg-danger", "text-white"],
+            "body": "Sorry, there was an error verifying the data. Try reloading the page, and submitting the file again.",
+            "buttons": []
+        });
+<?php
+        exit;
+    }
+
+
+
+    // Fetch the gene list.
+    @chdir(DATA_PATH . $sID);
+    $aGenes = file(FILE_GENES, FILE_IGNORE_NEW_LINES);
+
+    $_ERRORS = array();
+    if (empty($_POST['genes']) || !count($_POST['genes'])) {
+        $_ERRORS[''][] = 'Please select at least one housekeeping gene.';
+    } else {
+        $aNotFound = array_diff($_POST['genes'], $aGenes);
+        if ($aNotFound) {
+            // Some genes don't exist in our list.
+            $_ERRORS[''][] = 'Unknown gene' . (count($aNotFound) == 1? '' : 's') . ': &quot;' . implode('&quot;, &quot;', $aNotFound) . '&quot;.';
+        }
+    }
+
+    if ($_ERRORS) {
+        // Send the errors back to the form.
+?>
+        // There are errors. Prepare the form.
+        if (!oModal.find("form div.alert").length) {
+            oModal.find("form").prepend('<div class="alert alert-danger mb-3" role="alert"></div>');
+        } else {
+            oModal.find("form div.alert").html("");
+        }
+        oModal.find("form div.alert").html("<?= addslashes(implode('<BR>', $_ERRORS[''])) ?>");
+        // Re-enable the submit button.
+        oModal.find("button").prop("disabled", false).html(oModal.find("button").text().trim());
+<?php
+        exit;
+    }
+
+    // If we get here, no errors were encountered with the input.
+    // Fetch the cell line list.
+    $aCellLines = file(FILE_CELL_LINES, FILE_IGNORE_NEW_LINES);
+    $sCellLines = implode(
+        ' ',
+        array_map(
+            function ($sCellLine)
+            {
+                // Not sure why Bootstrap doesn't allow us to place the checkbox inside the label.
+                $sID = preg_replace('/[^a-z0-9-]/', '-', strtolower($sCellLine));
+                return
+                    '<input type="checkbox" class="btn-check" name="controls[]" id="btn-check-' . $sID . '" value="' . $sCellLine . '">' .
+                    '<label class="btn btn-outline-primary mb-1" for="btn-check-' . $sID . '">' . $sCellLine . '</label>';
+            },
+            $aCellLines
+        )
+    );
+
+    // OK, ready for the next step.
+    // We don't check what we're doing with the settings. If this all fails, the Python script will simply fail.
+    $aSettings = (@json_decode(file_get_contents(FILE_SETTINGS), true) ?? array());
+    @file_put_contents(
+        FILE_SETTINGS,
+        json_encode(
+            array_merge(
+                $aSettings,
+                array(
+                    'housekeeping_genes' => $_POST['genes'],
+                    'script_arguments' => '--input ' . FILE_INPUT . ' --genes ' . implode(' ', $_POST['genes'])
+                ),
+            ),
+            JSON_PRETTY_PRINT
+        )
+    );
+    $_SESSION['csrf_tokens']['upload'][$sID] = md5(uniqid());
+?>
+    lovd_updateModal({
+        "size": "lg",
+        "title": "Please select your controls",
+        "classes": [],
+        "body": '<form><?= $sCellLines; ?></form>',
+        "buttons": [["primary", "Submit"]]
+    });
+    $(function ()
+    {
+        oModal.find("form").submit(
+            function (e)
+            {
+                e.preventDefault();
+
+                // Only submit if the form is valid (required fields are filled in, etc).
+                var nCheckBoxes = $(this).find("input[type=checkbox]:checked").length;
+                if (!nCheckBoxes) {
+                    $(this).prepend('<div class="alert alert-danger mb-3" role="alert">Please select at least one control cell line.</div>');
+                    return false;
+                }
+
+                var formData = new FormData(this);
+                formData.append("jobID", "<?= $sID; ?>");
+                formData.append("csrf_token", "<?= $_SESSION['csrf_tokens']['upload'][$sID]; ?>");
+                // Turn off the submit button, but keep the form. We might need to post errors there.
+                oModal.find("button").prop("disabled", true).append(' <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>');
+
+                $.post({
+                    url: "<?= CURRENT_PATH; ?>?store-all",
+                    data: formData,
+                    contentType: false, // Required, fails otherwise.
+                    processData: false, // Required, fails otherwise.
+                    error: function ()
+                    {
+                        lovd_updateModal({
+                            "title": "Error",
+                            "classes": ["border-danger", "bg-danger", "text-white"],
+                            "body": "Failed to request the processing of the data. Please try again later or contact I.F.A.C.Fokkema@LUMC.nl for help and notify him of the job ID: <?= $sID; ?>.",
+                            "buttons": []
+                        });
+                    }
+                });
+            }
+        );
+    });
+<?php
+    exit;
+}
+
+
+
+
+
+elseif (ACTION == 'store-all') {
+    // Process given control cell lines, and store all the information we have.
+    $sID = ($_POST['jobID'] ?? '');
+    $sCSRF = ($_POST['csrf_token'] ?? '');
+    if (empty($_SESSION['csrf_tokens']['upload'][$sID])
+        || $_SESSION['csrf_tokens']['upload'][$sID] != $sCSRF) {
+?>
+        lovd_updateModal({
+            "title": "Error",
+            "classes": ["border-danger", "bg-danger", "text-white"],
+            "body": "Sorry, there was an error verifying the data. Try reloading the page, and submitting the file again.",
+            "buttons": []
+        });
+<?php
+        exit;
+    }
+
+
+
+    // Fetch the gene list.
+    @chdir(DATA_PATH . $sID);
+    $aCellLines = file(FILE_CELL_LINES, FILE_IGNORE_NEW_LINES);
+
+    $_ERRORS = array();
+    if (empty($_POST['controls']) || !count($_POST['controls'])) {
+        $_ERRORS[''][] = 'Please select at least one control cell line.';
+    } else {
+        $aNotFound = array_diff($_POST['controls'], $aCellLines);
+        if ($aNotFound) {
+            // Some cell lines don't exist in our list.
+            $_ERRORS[''][] = 'Unknown cell line' . (count($aNotFound) == 1? '' : 's') . ': &quot;' . implode('&quot;, &quot;', $aNotFound) . '&quot;.';
+        }
+    }
+
+    if ($_ERRORS) {
+        // Send the errors back to the form.
+?>
+        // There are errors. Prepare the form.
+        if (!oModal.find("form div.alert").length) {
+            oModal.find("form").prepend('<div class="alert alert-danger mb-3" role="alert"></div>');
+        } else {
+            oModal.find("form div.alert").html("");
+        }
+        oModal.find("form div.alert").html("<?= addslashes(implode('<BR>', $_ERRORS[''])) ?>");
+        // Re-enable the submit button.
+        oModal.find("button").prop("disabled", false).html(oModal.find("button").text().trim());
+<?php
+        exit;
+    }
+
+    // OK, ready for the next step.
+    // We don't check what we're doing with the settings. If this all fails, the Python script will simply fail.
+    $aSettings = (@json_decode(file_get_contents(FILE_SETTINGS), true) ?? array());
+    @file_put_contents(
+        FILE_SETTINGS,
+        json_encode(
+            array_merge(
+                $aSettings,
+                array(
+                    'controls' => $_POST['controls'],
+                    'script_arguments' => ($aSettings['script_arguments'] ?? '') . ' --controls ' . implode(' ', $_POST['controls']),
+                ),
+            ),
+            JSON_PRETTY_PRINT
+        )
+    );
+    $_SESSION['csrf_tokens']['upload'][$sID] = md5(uniqid());
+?>
+    lovd_updateModal({
+        "title": "Data successfully received, running the analysis.",
+        "body": '<div class="text-center"><div class="spinner-border" style="width: 3rem; height: 3rem;" role="status"><span class="visually-hidden">Loading...</span></div></div>',
+        "buttons": []
+    });
+    $.post({
+        url: "<?= CURRENT_PATH; ?>?process",
+        data: {
+            "jobID": "<?php echo $sID; ?>",
+            "csrf_token": "<?php echo $_SESSION['csrf_tokens']['upload'][$sID]; ?>"
+        },
+        error: function ()
+        {
+            lovd_updateModal({
+                "title": "Error",
+                "classes": ["border-danger", "bg-danger", "text-white"],
+                "body": "Failed to request the processing of the data. Please try again later or contact I.F.A.C.Fokkema@LUMC.nl for help and notify him of the job ID: <?php echo $sID; ?>.",
+                "buttons": []
+            });
+        }
+    });
+    // Show some activity for the user.
+    for (i = 1; i < 30; i ++) {
+        setTimeout(
+            function ()
+            {
+                oModal.find(".modal-content").not(".bg-danger").find(".modal-title").append(".");
+            },
+            i * 2000
+        );
+    }
 <?php
     exit;
 }
@@ -180,7 +565,7 @@ elseif (ACTION == 'process') {
             'escapeshellarg',
             explode(
                 ' ',
-                (string) @file_get_contents('arguments.txt')
+                (@json_decode(file_get_contents(FILE_SETTINGS), true) ?? array('script_arguments' => ''))['script_arguments']
             )
         )
     );
@@ -203,7 +588,7 @@ elseif (ACTION == 'process') {
         lovd_updateModal({
             "title": "Error",
             "classes": ["border-danger", "bg-danger", "text-white"],
-            "body": "Sorry, there was an error processing the data.<BR><?php echo $sError; ?>"
+            "body": "Sorry, there was an error processing the data.<BR><?= $sError; ?>"
         });
 <?php
         exit;
@@ -217,17 +602,17 @@ elseif (ACTION == 'process') {
         "classes": ["border-success", "bg-success", "text-white"]
     });
     $.post({
-        url: $("form").attr("action") + "?download",
+        url: "<?= CURRENT_PATH; ?>?download",
         data: {
-            "jobID": "<?php echo $sID; ?>",
-            "csrf_token": "<?php echo $_SESSION['csrf_tokens']['upload'][$sID]; ?>"
+            "jobID": "<?= $sID; ?>",
+            "csrf_token": "<?= $_SESSION['csrf_tokens']['upload'][$sID]; ?>"
         },
         error: function ()
         {
             lovd_updateModal({
                 "title": "Error",
                 "classes": ["border-danger", "bg-danger", "text-white"],
-                "body": "Failed to request the preparation of the download. Please try again later or contact I.F.A.C.Fokkema@LUMC.nl for help and notify him of the job ID: <?php echo $sID; ?>."
+                "body": "Failed to request the preparation of the download. Please try again later or contact I.F.A.C.Fokkema@LUMC.nl for help and notify him of the job ID: <?= $sID; ?>."
             });
         }
     });
@@ -257,9 +642,42 @@ elseif (ACTION == 'download') {
 
     // OK, compress the data.
     @chdir(DATA_PATH . $sID);
-    $sFile = 'results.zip';
+    // Move the input file.
+    @rename(FILE_INPUT, "Input/" . FILE_INPUT);
+    $aSettings = (@json_decode(file_get_contents(FILE_SETTINGS), true) ?? array());
+    if (!empty($aSettings['input_file'])) {
+        $sFile = 'results_' . preg_replace(
+            array(
+                '/\.xlsx?$/',
+                '/[^a-z0-9_-]/',
+            ),
+            array(
+                '',
+                '-',
+            ),
+            strtolower($aSettings['input_file'])
+        ) . '.zip';
+    } else {
+        $sFile = 'results.zip';
+    }
+    // Let's also store the name of the output file.
+    @file_put_contents(
+        FILE_SETTINGS,
+        json_encode(
+            array_merge(
+                $aSettings,
+                array(
+                    'time_end' => date('Y-m-d H:i:s P (T)'),
+                    'output_file' => $sFile,
+                ),
+            ),
+            JSON_PRETTY_PRINT
+        )
+    );
+    // Now also move the settings file.
+    @rename(FILE_SETTINGS, "Input/" . FILE_SETTINGS);
     @exec(
-        'zip ' . $sFile . ' *',
+        'zip -r ' . $sFile . ' *',
         $aOut,
         $nReturnCode
     );
@@ -272,7 +690,7 @@ elseif (ACTION == 'download') {
         lovd_updateModal({
             "title": "Error",
             "classes": ["border-danger", "bg-danger", "text-white"],
-            "body": "Sorry, there was an error preparing the download.<BR><?php echo $sError; ?>"
+            "body": "Sorry, there was an error preparing the download.<BR><?= $sError; ?>"
         });
 <?php
         exit;
@@ -285,14 +703,14 @@ elseif (ACTION == 'download') {
         "body": "Download ready."
     });
     // When we hide the body, it'll look weird, so we keep the body and style it, then hide the header instead.
-    $(oModal).find(".modal-body").addClass("fs-5");
-    $(oModal).find(".modal-header").hide();
+    oModal.find(".modal-body").addClass("fs-5");
+    oModal.find(".modal-header").hide();
 
     // Trigger a download of the current file.
     // This cannot be done directly, because JS is not allowed to download files.
     // So, here we'll trigger the browser to download the file through an IFRAME.
     $("body").append(
-        '<iframe class="d-none" src="' + $("form").attr("action") + '?raw&jobID=<?php echo $sID . '&csrf_token=' . $_SESSION['csrf_tokens']['upload'][$sID]; ?>"></iframe>'
+        '<iframe class="d-none" src="' + $("form").attr("action") + '?raw&jobID=<?= $sID . '&csrf_token=' . $_SESSION['csrf_tokens']['upload'][$sID]; ?>"></iframe>'
     );
 <?php
     exit;
@@ -308,26 +726,45 @@ elseif (ACTION == 'raw') {
     $sCSRF = ($_GET['csrf_token'] ?? '');
     if (empty($_SESSION['csrf_tokens']['upload'][$sID])
         || $_SESSION['csrf_tokens']['upload'][$sID] != $sCSRF) {
+        // We're in an iframe, so sadly, we'll need to do some extra work.
+        header('Content-type: text/html; charset=UTF-8');
 ?>
-        lovd_updateModal({
+<!DOCTYPE html>
+<html>
+<head>
+    <script type="text/javascript">
+        parent.lovd_updateModal({
             "title": "Error",
             "classes": ["border-danger", "bg-danger", "text-white"],
             "body": "Sorry, there was an error verifying the data. Try reloading the page, and submitting the file again."
         });
+    </script>
+</head>
+</html>
 <?php
         exit;
     }
 
     @chdir(DATA_PATH . $sID);
-    $sFile = 'results.zip';
+    $aSettings = (@json_decode(file_get_contents('Input/' . FILE_SETTINGS), true) ?? array());
+    $sFile = ($aSettings['output_file'] ?? 'results.zip');
     if (!file_exists($sFile)) {
+        // We're in an iframe, so sadly, we'll need to do some extra work.
+        header('Content-type: text/html; charset=UTF-8');
         $sError = 'Could not fetch download.';
 ?>
-        lovd_updateModal({
+<!DOCTYPE html>
+<html>
+<head>
+    <script type="text/javascript">
+        parent.lovd_updateModal({
             "title": "Error",
             "classes": ["border-danger", "bg-danger", "text-white"],
-            "body": "Sorry, there was an error sending the data.<BR><?php echo $sError; ?>"
+            "body": "Sorry, there was an error sending the data.<BR><?= $sError; ?>"
         });
+    </script>
+</head>
+</html>
 <?php
         exit;
     }

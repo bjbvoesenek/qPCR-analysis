@@ -4,7 +4,7 @@
  * Web wrapper for Bas Voesenek's qPCR analysis script.
  *
  * Created     : 2023-03-22
- * Modified    : 2023-03-31
+ * Modified    : 2023-04-20
  *
  * Copyright   : 2023 Leiden University Medical Center; http://www.LUMC.nl/
  * Programmer  : Ivo F.A.C. Fokkema <I.F.A.C.Fokkema@LUMC.nl>
@@ -14,6 +14,12 @@
 define('ROOT_PATH', './');
 require ROOT_PATH . 'inc-lib.php';
 define('DATA_PATH', ROOT_PATH . 'data/');
+
+$sVersion = getVersion();
+// We link to the manual based on the first two numbers, to not have to create
+//  tags and not always have to adjust the version in the Python script.
+$aVersion = explode('.', $sVersion);
+$sVersionShort = implode('.', array_slice($aVersion, 0, 2));
 
 // Find out if we're using SSL.
 if ((!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] == 'https') || (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] != 'off') || !empty($_SERVER['SSL_PROTOCOL'])) {
@@ -26,7 +32,7 @@ if ((!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PR
 define('LANG', 'en_US');
 ?>
 <!DOCTYPE html>
-<HTML lang="<?php echo LANG; ?>">
+<html lang="<?php echo LANG; ?>">
 <head>
     <!-- Required meta tags -->
     <META http-equiv="Content-Type" content="text/html; charset=UTF-8">
@@ -45,15 +51,12 @@ define('LANG', 'en_US');
     <meta property="og:locale" content="<?php echo LANG; ?>">
     <meta property="og:site_name" content="Human Genetics, Leiden University Medical Center">
 
-    <style type="text/css">
-    </style>
-
     <script src="https://code.jquery.com/jquery-3.3.1.min.js" integrity="sha384-tsQFqpEReu7ZLhBV2VZlAu7zcOV+rXbYlF2cqB8txI/8aZajjp4Bqd+V6D5IgvKT" crossorigin="anonymous"></script>
 </head>
 <body>
 
     <div class="container my-4">
-        <h1>qPCR Analysis Web Interface</h1>
+        <h1>qPCR Analysis <?= ($sVersion ?? ''); ?> Web Interface</h1>
 
 <?php
 // Check the data directory.
@@ -87,9 +90,13 @@ if ($sError) {
     // OK, print the form.
 ?>
         <div class="alert alert-info mb-3" role="alert">
-            Please select your input file (.xlsx) and fill in your housekeeping genes.
-            Then, submit the form to start the qPCR analysis.
+            Please select your input file (.xlsx) and submit the form.
+            In the next steps you can choose your housekeeping genes and your control cell lines.
+            After this, the qPCR analysis will start.
             Note, this process will take a while, but should be finished within a minute.
+            When done, you will receive a zipped archive containing all resulting files.
+            <BR><BR>
+            For more information about this software, please see <a href="https://github.com/bjbvoesenek/qPCR-analysis/blob/v<?= $sVersionShort; ?>.0/README.md">our manual</a>.
         </div>
         <!-- Placeholder for errors. -->
         <div class="alert alert-danger mb-3 d-none" role="alert"></div>
@@ -102,24 +109,6 @@ if ($sError) {
                     <input class="form-control" id="inputFile" type="file" name="file" required>
                     <div class="invalid-feedback">
                         Please provide a valid Excel sheet, containing the qPCR data.
-                    </div>
-                </div>
-            </div>
-            <div class="row mb-2 g-2">
-                <label for="inputHouseKeeping1" class="col-sm-3 col-form-label">Housekeeping gene #1</label>
-                <div class="col-sm-9">
-                    <input class="form-control" id="inputHouseKeeping1" type="text" name="housekeeping1" placeholder="e.g., GAPDH" required>
-                    <div class="invalid-feedback">
-                        Please provide a valid housekeeping gene, like GAPDH.
-                    </div>
-                </div>
-            </div>
-            <div class="row mb-2 g-2">
-                <label for="inputHouseKeeping2" class="col-sm-3 col-form-label">Housekeeping gene #2</label>
-                <div class="col-sm-9">
-                    <input class="form-control" id="inputHouseKeeping2" type="text" name="housekeeping2" placeholder="e.g., Bactin" required>
-                    <div class="invalid-feedback">
-                        Please provide a valid housekeeping gene, like Bactin.
                     </div>
                 </div>
             </div>
@@ -227,6 +216,8 @@ if ($sError) {
                                     oModal.find(".modal-footer").append('<button type="button" class="btn btn-' + aButton[0] + '">' + aButton[1] + '</button>');
                                     if (aButton[1] == "Close") {
                                         oModal.find(".modal-footer button").last().click(function () { obModal.hide(); })
+                                    } else if (aButton[1] == "Submit") {
+                                        oModal.find(".modal-footer button").last().click(function () { oModal.find(".modal-body form").submit(); })
                                     }
                                 }
                             }

@@ -1,44 +1,127 @@
 # -*- coding: utf-8 -*-
 """
 Script for automating the analysis of qPCR data
-
 """
+
+__version_info__ = ('2','0','0')
+__version__ = '.'.join(__version_info__)
 
 #%% Check user input
 import sys
-# input script from web page: python qpcr_analysis.py Analysis.xlsx GAPDH Bactin
+# input to script from web page: python qpcr_analysis.py --input Analysis.xlsx --genes GAPDH Bactin --controls Control1 Control2 FLB240
 
-if len(sys.argv) != 4:
-    sys.exit('Error: Not enough arguments. Three arguments are required.\n Usage: python3 qpcr_analysis.py <input file> <housekeeping gene 1> <housekeeping gene 2>\n Input file          : An .xlsx file saved from LinRegPCR.\n Housekeeping gene 1 : First housekeeping gene.\n Housekeeping gene 2 : Second housekeeping gene.')
+import argparse
+parser = argparse.ArgumentParser(description='Automated analysis of qPCR data exported from LinRegPCR')
+parser.add_argument(
+    '--version', action='version',
+    version='%(prog)s {version}'.format(version=__version__))
+parser.add_argument(
+    '--input', action='store', nargs=1, required=True, metavar='<input file>',
+    help='an .xlsx saved from LinRegPCR')
+parser.add_argument(
+    '--genes', action='store', nargs='+', metavar='<gene>',
+    help='a list of housekeeping genes, each separated by a space')
+parser.add_argument(
+    '--controls', action='store', nargs='+', metavar='<control>',
+    help='a list of control cell lines, each separated by a space')
 
-input_file = str(sys.argv[1])
-housekeeping_gene1 = str(sys.argv[2])
-housekeeping_gene2 = str(sys.argv[3])
-    
-#%% sort and plot
+args = vars(parser.parse_args())
+extract_data = False # Should we just extract the genes and cell lines?
+
+if args['input'] == None:
+    print('Error: No input file given. Provide the Excel file to be analyzed using --input.\n')
+    sys.exit(1)
+else:
+    if args['genes'] == None and args['controls'] == None:
+        extract_data = True
+        input_file = args['input'][0]
+    elif args['genes'] == None or args['controls'] == None:
+        print('Error: Wrong number of arguments. Provide the Excel file to be analysed only, or provide the Excel file to be analyzed together with housekeeping genes (--genes) and control lines (--controls).\n')
+        sys.exit(2)
+    else:
+        input_file = args['input'][0]
+        housekeeping_genes = args['genes']
+        control = args['controls']
+
+import os
+# Check if the script has access to write files to the current directory
+if os.access(os.getcwd(), os.W_OK) == False:
+    sys.exit('Error: No rights to write files to the current directory.\n')
+
+# Check if analysis is already performed in the current directory
+if os.path.isdir("Data") or os.path.isdir("Figures"):
+    sys.exit('Error: An analysis has already been performed in this folder. Please go to a different folder and run the script there.\n')
+
+
+#%% Determine whether experiment is done in LinRegPCR or BioRad
 
 import pandas as pd
-import sys
 # Check if analysis excel file exist
 if not input_file.lower().endswith(('.xlsx')):
-    sys.exit('Input file is not an .xlsx file. Check if you provided the right file.')
-   
+    print('Error: The input file is not an .xlsx file. Check if you provided the right file.\n')
+    sys.exit(3)
+
 # Check if the right sheet exist
 from openpyxl import load_workbook
 user_wb = load_workbook(input_file, read_only = True)
 
-if 'Removed empty wells' in user_wb.sheetnames:
-    data = pd.read_excel(input_file, sheet_name='Removed empty wells')
+if 'Cq' in user_wb.sheetnames:
+    data = pd.read_excel(input_file, sheet_name='Cq')
+    if pd.Series(['Fluor', 'Target', 'Content']).isin(data.columns).all(): # Second check, should return True if BioRad was used
+        qPCR_system = 'BioRad'
+        data = data.reset_index(drop=True)
+    else:
+        sys.exit('Error: Not sure whether this is a BioRad or LinRegPCR output file. Check the names of the sheets and columns and try again.\nSee manual for more information.\n')
+elif 'Data' in user_wb.sheetnames:
+    data = pd.read_excel(input_file, sheet_name='Data')
+    if pd.Series(['input.txt', 'Text']).isin(data.columns).all(): # Second check, should return True if LinRegPCR was used
+        qPCR_system = 'LinRegPCR'
+    else:
+        sys.exit('Error: Not sure whether this is a BioRad or LinRegPCR output file. Check the names of the sheets and columns and try again.\nSee manual for more information.\n')
 else:
-    sys.exit('Sheet [Removed empty wells] not found in your input file. Make sure the sheets in your excel workbook are named correctly')
+    print('Error: Naming of sheets not recognized. Make sure the sheets in your excel workbook are named correctly.\nSee the manual for more information.\n')
+    sys.exit(4)
+
+#%% For the BioRad system, remove wells without sample
+
+if qPCR_system == 'BioRad':
+    # Find rows in data table containing the information of empty wells
+    empty_wells = []
+    for i in range(0,data.shape[0]):
+        if str(data.loc[i,'Sample']) == 'nan':
+           empty_wells.append(data.loc[i,'Well'])
+
+    # Delete these rows from the data
+    for i in range(0,data.shape[0]):
+        if data.loc[i, 'Well'] in empty_wells:
+            data = data.drop([i])
+    data = data.reset_index(drop=True)
+
+    # Delete these wells from melting curves sheet (if melting curves are provided)
+    if 'Melting curves' in user_wb.sheetnames:
+        df_melting = pd.read_excel(input_file, sheet_name='Melting curves')
+        df_melting = df_melting.drop(columns=[col for col in df_melting if col in empty_wells])
+
+
+#%% Find unique primers and cell lines
 
 import matplotlib.pyplot as plt
 import math
 from natsort import natsorted, index_natsorted, order_by_index
 
-if 'input.txt' in data: del data['input.txt']
+if qPCR_system == 'LinRegPCR':
+    if 'input.txt' in data:
+        del data['input.txt']
 
-sample_names = data['Text']
+    sample_names = data['Text']
+
+elif qPCR_system == 'BioRad':
+    for i in range(0,data.shape[0]):
+        temp_sample_name = [data.loc[i, 'Sample'], data.loc[i,'Target']]
+        data.loc[i,'Sample names'] = '_'.join(str(e) for e in temp_sample_name)
+
+    sample_names = data['Sample names']
+
 index = index_natsorted(sample_names)
 sample_names_df = sample_names.to_frame()
 
@@ -51,18 +134,65 @@ cell_lines = cell_lines.iloc[:,0]
 for n in range(0,len(primer_names)):
     primer_names[n] = primer_names[n].partition('_')[2]
     cell_lines[n] = cell_lines[n].partition('_')[0]
+
 unique_primers = primer_names.unique()
 unique_cell_lines = cell_lines.unique()
+
+#%% Store names of cell lines and primers in .txt files if user only provides Excel sheet
+
+if extract_data:
+    # Check if analysis is already performed in the current directory
+    if os.path.isdir("Input"):
+        sys.exit('Error: An analysis has already been performed in this folder. Please go to a different folder and run the script there.\n')
+
+    # Create directory so store information about the user input
+    os.mkdir('Input')
+
+    # Save names of used cell lines in .txt file
+    sorted_unique_cell_lines = natsorted(unique_cell_lines)
+    with open("Input/Cell_lines.txt", "w") as txt_file:
+        for line in sorted_unique_cell_lines:
+            txt_file.write(line + "\n")
+
+    # Save names of used cell lines in .txt file
+    sorted_unique_primers = natsorted(unique_primers)
+    with open("Input/Genes.txt", "w") as txt_file:
+        for line in sorted_unique_primers:
+            txt_file.write(line + "\n")
+
+    print(
+        "Successfully stored all cell lines and genes from the input to text files.\n" +
+        "Please select your housekeeping genes and control cell lines and use --genes and --controls to pass them to this program.\n" +
+        "E.g.,\n" +
+        "python3 " + __file__[len(os.getcwd())+1:] + " --input " + args['input'][0] + " --genes " + sorted_unique_primers[0] + " --controls " + sorted_unique_cell_lines[0] + "\n"
+    )
+    # Exit script. User now has to select housekeeping genes and control cell lines in web-interface
+    sys.exit(0)
+
+
+
+# Check if the given values actually match.
+for gene in housekeeping_genes:
+    if gene.upper() not in map(str.upper, unique_primers):
+        print("Error: The provided housekeeping gene '" + gene + "' could not be found in your data. Check if it's named correctly.\n")
+        sys.exit(5)
+
+for cell_line in control:
+    if cell_line.upper() not in map(str.upper, unique_cell_lines):
+        print("Error: The provided control '" + cell_line + "' could not be found in your data. Check if it's named correctly.\n")
+        sys.exit(6)
+
+#%% Plot qPCR plots
+
+# Create directories to store plots and data
+os.mkdir('Figures')
+os.mkdir('Data')
 
 x = range(0, data.shape[1] - 1)
 
 size_subplots = data.shape[0]
 size_subplots = math.sqrt(size_subplots)
 size_subplots = math.ceil(size_subplots)
-
-plt.figure(figsize = (300,40))
-plt.subplots_adjust(hspace = 0.5, wspace = 0.3)
-#plt.suptitle('Melting curves', fontsize = 100)
 
 nr_primersets = len(unique_primers)
 nr_samples = len(unique_cell_lines)
@@ -72,49 +202,59 @@ nr_replicates = int(nr_replicates)
 rows = nr_samples
 columns = nr_primersets * nr_replicates
 
+plt.figure(figsize = (9*columns,8 * rows))
+plt.subplots_adjust(hspace = 0.5, wspace = 0.3)
+#plt.suptitle('Melting curves', fontsize = 100)
+
 subplot_number = 1
 name_counter = 0
 
 max_yvalue = data.max(numeric_only=True)
 max_yvalue = max_yvalue.max() * 1.05
 
-df_for_plotting = data
-if 'Text' in df_for_plotting: del df_for_plotting['Text']
+# Only plot qPCR plost if using LinRegPCR system (BioRad does not provide this data)
+if qPCR_system == 'LinRegPCR':
+    df_for_plotting = data
+    if 'Text' in df_for_plotting: del df_for_plotting['Text']
 
-for i in range(len(index)):
-    ax = plt.subplot(rows, columns, subplot_number)
-    subplot_number = subplot_number + 1
-    y = df_for_plotting.loc[index[i]]
-    plt.plot(x,y)
-    plt.ylim(0,max_yvalue)
-    ax.set_title(sample_names[index[i]], fontsize = 30)
-    name_counter = name_counter + 1
-    
-plt.savefig('qPCR_plots_sorted.pdf', bbox_inches='tight')
+    for i in range(len(index)):
+        ax = plt.subplot(rows, columns, subplot_number)
+        subplot_number = subplot_number + 1
+        y = df_for_plotting.loc[index[i]]
+        plt.plot(x,y)
+        plt.ylim(0,max_yvalue)
+        ax.set_title(sample_names[index[i]], fontsize = 30)
+        name_counter = name_counter + 1
+
+    plt.savefig('Figures/qPCR_plots_sorted.pdf', bbox_inches='tight')
 
 #%% Plot melting curves
 
 if 'Melting curves' in user_wb.sheetnames:
-    df_melting = pd.read_excel(input_file, sheet_name='Melting curves')
+    if qPCR_system == 'LinRegPCR': # In case of BioRad, this data is already loaded
+        df_melting = pd.read_excel(input_file, sheet_name='Melting curves')
 
-    for col in df_melting.columns:
-        if col.startswith('Unnamed'):
-            del df_melting[col]
-        
-    x_melting = df_melting[df_melting.columns[index[0]]]
-        
-    for col in df_melting.columns:
-        if col.startswith('X'):
-            del df_melting[col]
+        for col in df_melting.columns:
+            if col.startswith('Unnamed'):
+                del df_melting[col]
 
-    plt.figure(figsize = (300,40))
+        x_melting = df_melting[df_melting.columns[index[0]]]
+
+        for col in df_melting.columns:
+            if col.startswith('X'):
+                del df_melting[col]
+    elif qPCR_system == 'BioRad':
+        x_melting = df_melting['Temperature']
+        del df_melting['Temperature']
+
+    plt.figure(figsize = (9*columns,8 * rows))
     plt.subplots_adjust(hspace = 0.5, wspace = 0.3)
     #plt.suptitle('Melting curves', fontsize = 100)
 
     subplot_number = 1
     name_counter = 0
     index_number = 0
-    
+
     y_max = max(df_melting.max()) * 1.1
 
     for i in range(len(index)):
@@ -127,24 +267,39 @@ if 'Melting curves' in user_wb.sheetnames:
         name_counter = name_counter + 1
         index_number += 1
 
-    plt.savefig('Melting_curves_sorted.pdf', bbox_inches='tight')
+    plt.savefig('Figures/Melting_curves_sorted.pdf', bbox_inches='tight')
 else:
     print('Sheet [Melting curves] not found in your input file. Continuing to the next step...')
 
 #%% calculate average Ct per condition
 
-if 'Removed empty wells_compact' not in user_wb.sheetnames:
-    sys.exit('Sheet [Removed empty wells_compact] not found in your input file. Make sure the sheets in your excel workbook are named correctly')
-    
-df_compact = pd.read_excel(input_file, sheet_name='Removed empty wells_compact')
+if qPCR_system == 'LinRegPCR':
+    if 'Data_compact' not in user_wb.sheetnames:
+        print('Error: Sheet [Data_compact] not found in your input file. Make sure the sheets in your excel workbook are named correctly.\nSee the manual for more information.\n')
+        sys.exit(7)
 
-df_Ct = df_compact.iloc[3:3+len(sample_names), 4]
-df_Ct = df_Ct.to_frame()
-df_Ct = df_Ct.reset_index()
-df_Ct['Sample'] = sample_names
-del df_Ct['index']
-df_Ct = df_Ct.rename(columns={'Chemistry: DNA binding dye (non-saturating' : 'Ct value', 'Sample' : 'Sample'})
-df_Ct['Ct value'] = df_Ct['Ct value'].astype(float)
+    df_compact = pd.read_excel(input_file, sheet_name='Data_compact')
+
+    df_Ct = df_compact.iloc[3:3+len(sample_names), 4]
+    df_Ct = df_Ct.to_frame()
+    df_Ct = df_Ct.reset_index()
+    df_Ct['Sample'] = sample_names
+    del df_Ct['index']
+    df_Ct = df_Ct.rename(columns={'Chemistry: DNA binding dye (non-saturating' : 'Ct value', 'Sample' : 'Sample'})
+    df_Ct['Ct value'] = df_Ct['Ct value'].astype(float)
+
+elif qPCR_system == 'BioRad':
+    df_Ct = data[['Cq', 'Sample names']].copy()
+    df_Ct = df_Ct.rename(columns={'Cq' : 'Ct value', 'Sample names' : 'Sample'})
+
+    # Remove Mq/H2O samples, as those are empty
+    for i in range(0,df_Ct.shape[0]):
+        if df_Ct.loc[i,'Sample'].partition('_')[0] == 'mq':
+            df_Ct = df_Ct.drop([i])
+    df_Ct = df_Ct.reset_index(drop=True)
+    unique_cell_lines = unique_cell_lines[unique_cell_lines !='mq']
+    unique_cell_lines = unique_cell_lines[unique_cell_lines !='MQ']
+    nr_samples = nr_samples - 1
 
 # Make df with replicates on one row
 replicates_sorted = pd.DataFrame(index=range(nr_samples * nr_primersets),columns=range(nr_replicates + 1))
@@ -159,7 +314,7 @@ for i in range(0, len(unique_cell_lines)):
         replicate_df_temp = df_Ct[df_Ct['Sample'] == replicate_name]
         replicates_sorted.iloc[row_counter, 1:(2+nr_replicates-1)] = replicate_df_temp['Ct value'].tolist()
         row_counter = row_counter + 1
-        
+
 ## Remove outliers (SD > 0.2)!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!?!?!?!!?!?!?!?!??!??!!?!?!?!?!?!?!?!?!?!??!!?!?!!!
 # outlier_threshold = 1 # times SD
 
@@ -175,18 +330,6 @@ for i in range(0, len(unique_cell_lines)):
 #     for j in range(1,1+nr_replicates):
 #         if df_outliers_removed.iloc[i,j] > temp_max or df_outliers_removed.iloc[i,j] < temp_min:
 #             df_outliers_removed.iloc[i,j] = None
-        
-# Calculate mean per condition
-# Ct_grouped = df_Ct.groupby(['Sample']).mean()
-
-# Ct_rownames = Ct_grouped.index
-# Ct_rownames = Ct_rownames.tolist()
-
-# for i in range(0,len(Ct_rownames)):
-#     Ct_rownames[i] = Ct_rownames[i].replace("input_txt_", "")
-
-# Ct_grouped.index = Ct_rownames
-# Ct_grouped['Index'] = Ct_rownames
 
 
 #%% Plot Bargraph
@@ -202,56 +345,52 @@ color_list = [''] * nr_samples
 avg_Ct_df = pd.DataFrame()
 
 # Initialize figure (increase figsize if plots don't fit)
-plt.figure(figsize = (20,20))
+plt.figure(figsize = (5*size_subplots,5*size_subplots))
 plt.subplots_adjust(hspace = 0.5, wspace = 0.3)
 
 # Loop over unique primers and plot Ct values as bar graph
 for i in range(0,len(unique_primers)):
     ax = plt.subplot(size_subplots, size_subplots, subplot_number)
     subplot_number += 1
-        
+
     temp_df = replicates_sorted[replicates_sorted[0].str.partition('_')[2] == unique_primers[i]]
     temp_values = temp_df.iloc[:,1:1+nr_replicates].mean(axis=1).tolist()
     temp_samples = temp_df.iloc[:,0].tolist()
     for j in range(0,len(temp_samples)):
         temp_samples[j] = temp_samples[j].replace('_' + unique_primers[i], "")
-        
+
     # Store Ct values per primer in dataframe (later save to excel)
-    avg_Ct_df[unique_primers[i]] = temp_values 
-         
+    avg_Ct_df[unique_primers[i]] = temp_values
+
     for k in range(0,len(temp_samples)):
-        if temp_samples[k].startswith('Control'):
+        if temp_samples[k] in control:      # Control lines will have gray bars
             color_list[k] = 'gray'
-        if temp_samples[k].startswith('FLB'):
-            color_list[k] = 'gray'
-        if temp_samples[k].startswith('APP'):
-            color_list[k] = 'blue'
-        if temp_samples[k].startswith('H2O'):
+        elif temp_samples[k] == 'H2O':
             color_list[k] = 'green'
-        else:
-            color_list[k] = 'gray'
-    
+        else:                               # Investigated lines will have blue bars
+            color_list[k] = 'royalblue'
+
     ax.bar(temp_samples, temp_values, color=color_list, alpha=0.7)
     ax.tick_params(axis='x', labelrotation=90)
     ax.set_ylim(0,40)
     ax.set_title(unique_primers[i])
-   
+
     for i in range(len(unique_cell_lines)):
        ax.scatter([i] * nr_replicates, temp_df.iloc[i,1:1+nr_replicates].values.tolist(), marker='o', c='k', s=5)
-       
 
-plt.savefig('Average_Ct_bargraph.pdf', bbox_inches='tight')
+
+plt.savefig('Figures/Average_Ct_bargraph.pdf', bbox_inches='tight')
 
 avg_Ct_df.index = temp_samples
-avg_Ct_df.to_excel("Average_Ct_values.xlsx")  
+avg_Ct_df.to_excel("Data/Average_Ct_values.xlsx")
 
-#%% Calculate relative expression
+#%% Calculate relative expression (variable number of housekeeping genes)
 
 from statistics import mean
 
 # Initialize dataframe and check if housekeeping genes are in the dataframe
 dCt_df = pd.DataFrame()
- 
+
 # Store column names. For analysis, it does not matter whether upper or lower case housekeeping genes is used.
 original_col_names = avg_Ct_df.columns.copy()
 analysis_col_names = avg_Ct_df.columns.str.upper()
@@ -260,18 +399,16 @@ unique_primers_analysis = [x.upper() for x in unique_primers_analysis]
 
 avg_Ct_df.columns = analysis_col_names
 
-if not housekeeping_gene1.upper() in avg_Ct_df.columns.str.upper() or not housekeeping_gene2.upper() in avg_Ct_df.columns.str.upper():
-    sys.exit('The provided housekeeping genes could not be found in your data. Check if housekeeping genes are named correctly.')
-  
-
 # Subtract housekeeping gene Ct from primer Ct in every row/sample (delta Ct)
+housekeeping_genes_upper = [s.upper() for s in housekeeping_genes]
+
 for index, row in avg_Ct_df.iterrows():#dCt_df.iterrows():
     for i in range(0,len(unique_primers)):
-        avg_Ct_housekeeping = mean([avg_Ct_df.loc[index, housekeeping_gene1.upper()], avg_Ct_df.loc[index, housekeeping_gene2.upper()]])
+        avg_Ct_housekeeping = mean(avg_Ct_df.loc[index, housekeeping_genes_upper])
         dCt_df.loc[index, unique_primers_analysis[i]] = avg_Ct_df.loc[index, unique_primers_analysis[i]] - avg_Ct_housekeeping
-        
+
+
 # Average control lines to calculate ddCt
-control = [i for i in dCt_df.index if i.startswith('FLB') or i.startswith('Control')]
 dCt_df.loc['Control average'] = dCt_df.loc[control,:].mean()
 
 # subtract dCt of gene of interest from dCt of control average
@@ -279,7 +416,7 @@ ddCt_df = pd.DataFrame()
 
 for i in range(0,len(unique_primers)):
     for index, row in dCt_df.iterrows():
-        #ddCt_df.loc[index, unique_primers[i]] = dCt_df.loc['Control average', unique_primers[i]] - dCt_df.loc[index, unique_primers[i]] 
+        #ddCt_df.loc[index, unique_primers[i]] = dCt_df.loc['Control average', unique_primers[i]] - dCt_df.loc[index, unique_primers[i]]
         ddCt_df.loc[index, unique_primers_analysis[i]] = dCt_df.loc[index, unique_primers_analysis[i]] - dCt_df.loc['Control average', unique_primers_analysis[i]]
 
 # Calculate relative ddCt (2^-2ddCt)
@@ -291,15 +428,22 @@ for index, row in ddCt_df.iterrows():
 
 # Save relative ddCt values to excel
 rel_ddCt_df.columns = original_col_names
-rel_ddCt_df.to_excel("Relative_expression_values.xlsx")
+rel_ddCt_df.to_excel("Data/Relative_expression_values.xlsx")
 
 # Remove H2O sample before plotting
-rel_ddCt_df = rel_ddCt_df.drop('H2O')
+if 'mq' in rel_ddCt_df.index:
+    rel_ddCt_df = rel_ddCt_df.drop('mq')
+elif 'MQ' in rel_ddCt_df.index:
+    rel_ddCt_df = rel_ddCt_df.drop('MQ')
+elif 'h2o' in rel_ddCt_df.index:
+    rel_ddCt_df = rel_ddCt_df.drop('h2o')
+elif 'H2O' in rel_ddCt_df.index:
+    rel_ddCt_df = rel_ddCt_df.drop('H2O')
 
 ## Plot relative ddCt values
 color_list = [''] * rel_ddCt_df.shape[0]
 subplot_number = 1
-plt.figure(figsize = (20,20))
+plt.figure(figsize = (5*size_subplots,5*size_subplots))
 plt.subplots_adjust(hspace = 0.5, wspace = 0.3)
 y_max = max(rel_ddCt_df.max()) * 1.1
 
@@ -307,78 +451,72 @@ y_max = max(rel_ddCt_df.max()) * 1.1
 for i in range(0,len(unique_primers)):
     ax = plt.subplot(size_subplots, size_subplots, subplot_number)
     subplot_number += 1
-        
+
     temp_values = rel_ddCt_df[unique_primers[i]].tolist()
     temp_samples = rel_ddCt_df.index
     temp_samples = temp_samples.tolist()
-    
+
     for j in range(0,len(temp_samples)):
         temp_samples[j] = temp_samples[j].replace('_' + unique_primers[i], "")
-    
+
     for k in range(0,len(temp_samples)):
-        if temp_samples[k].startswith('Control'):
+        if temp_samples[k] in control or temp_samples[k] == 'Control average':      # Control lines will have gray bars
             color_list[k] = 'gray'
-        if temp_samples[k].startswith('FLB'):
-            color_list[k] = 'gray'
-        if temp_samples[k].startswith('APP'):
+        else:                                                                       # Investigated lines will have blue bars
             color_list[k] = 'royalblue'
-        else:
-            color_list[k] = 'gray'
-    
+
     plt.bar(temp_samples, temp_values, color=color_list, alpha=0.8)
     plt.xticks(rotation='vertical')
     plt.ylim(0,y_max)
     plt.title(unique_primers[i])
 
-plt.savefig('Relative_expression_values.pdf', bbox_inches='tight')
+plt.savefig('Figures/Relative_expression_values.pdf', bbox_inches='tight')
 
 #%% Plot primer efficiency
+if qPCR_system == 'LinRegPCR':
+    if 'Data_output' not in user_wb.sheetnames:
+        print('Error: Sheet [Data_output] not found in your input file. Make sure the sheets in your excel workbook are named correctly.\nSee the manual for more information.\n')
+        sys.exit(8)
 
-if 'Removed empty wells_output' not in user_wb.sheetnames:
-    sys.exit('Sheet [Removed empty wells_output] not found in your input file. Make sure the sheets in your excel workbook are named correctly')
+    df_output = pd.read_excel(input_file, sheet_name='Data_output')
 
-df_output = pd.read_excel(input_file, sheet_name='Removed empty wells_output')
+    df_primer_eff = df_output.iloc[3:3+len(sample_names), 6]
+    df_primer_eff = df_primer_eff.to_frame()
+    df_primer_eff = df_primer_eff.reset_index()
+    df_primer_eff['Sample'] = sample_names
+    df_primer_eff['Primer'] = primer_names
+    df_primer_eff['Cell_line'] = cell_lines
+    del df_primer_eff['index']
+    df_primer_eff = df_primer_eff.rename(columns={'Unnamed: 6' : 'Individual primer efficiency', 'Sample' : 'Sample'})
+    df_primer_eff['Individual primer efficiency'] = df_primer_eff['Individual primer efficiency'].astype(float)
+    df_primer_eff = df_primer_eff[df_primer_eff.Cell_line != 'H2O']
 
-df_primer_eff = df_output.iloc[3:3+len(sample_names), 6]
-df_primer_eff = df_primer_eff.to_frame()
-df_primer_eff = df_primer_eff.reset_index()
-df_primer_eff['Sample'] = sample_names
-df_primer_eff['Primer'] = primer_names
-df_primer_eff['Cell_line'] = cell_lines
-del df_primer_eff['index']
-df_primer_eff = df_primer_eff.rename(columns={'Unnamed: 6' : 'Individual primer efficiency', 'Sample' : 'Sample'})
-df_primer_eff['Individual primer efficiency'] = df_primer_eff['Individual primer efficiency'].astype(float)
-df_primer_eff = df_primer_eff[df_primer_eff.Cell_line != 'H2O']
+    # Make df with primersets per row
+    primers_sorted = pd.DataFrame(index=range(nr_primersets),columns=range(nr_replicates * (nr_samples - 1) + 1))
+    row_counter = 0
 
-# Make df with primersets per row
-primers_sorted = pd.DataFrame(index=range(nr_primersets),columns=range(nr_replicates * (nr_samples - 1) + 1))
-row_counter = 0
+    # Sort data, replicates in the same row
+    for i in unique_primers:
+        primers_sorted.iloc[row_counter,0] = i
+        primer_df_temp = df_primer_eff[df_primer_eff['Primer'] == i]
+        temp_primer_mean = primer_df_temp['Individual primer efficiency'].mean()
+        primers_sorted.iloc[row_counter, 1:nr_replicates * (nr_samples-1) + 1] = primer_df_temp['Individual primer efficiency'].tolist()
+        primers_sorted.loc[row_counter, 'Mean'] = temp_primer_mean
+        row_counter = row_counter + 1
 
-# Sort data, replicates in the same row
-for i in unique_primers:
-    primers_sorted.iloc[row_counter,0] = i
-    primer_df_temp = df_primer_eff[df_primer_eff['Primer'] == i]
-    temp_primer_mean = primer_df_temp['Individual primer efficiency'].mean()
-    primers_sorted.iloc[row_counter, 1:nr_replicates * (nr_samples-1) + 1] = primer_df_temp['Individual primer efficiency'].tolist()
-    primers_sorted.loc[row_counter, 'Mean'] = temp_primer_mean
-    row_counter = row_counter + 1
-    
-# Plot primer efficiency
-fig, ax = plt.subplots()
-ax.bar(unique_primers.tolist(), primers_sorted['Mean'], alpha=0.5)
-ax.tick_params(axis='x', labelrotation=90)
-ax.set_ylim(0,2)
-plt.axhline(y=1.8, color='k', ls='--')
+    # Plot primer efficiency
+    fig, ax = plt.subplots()
+    ax.bar(unique_primers.tolist(), primers_sorted['Mean'], alpha=0.5)
+    ax.tick_params(axis='x', labelrotation=90)
+    ax.set_ylim(0,2)
+    plt.axhline(y=1.8, color='k', ls='--')
 
-for i in range(len(unique_primers)):
-   ax.scatter([i] * nr_replicates * (nr_samples-1), primers_sorted.iloc[i,1:nr_replicates * (nr_samples-1) + 1].values.tolist(), marker='o', c='k', s=5)
-       
-plt.savefig('Primer_efficiency.pdf', bbox_inches='tight')
+    for i in range(len(unique_primers)):
+       ax.scatter([i] * nr_replicates * (nr_samples-1), primers_sorted.iloc[i,1:nr_replicates * (nr_samples-1) + 1].values.tolist(), marker='o', c='k', s=5)
 
+    plt.savefig('Figures/Primer_efficiency.pdf', bbox_inches='tight')
 
-
-
-
-
-
-
+#%% Quit script
+# Indicate a successful ending of the script. The web wrapper requires this, as the script can generate output
+#  that is irrelevant if the script ran successfully.
+sys.exit(0)
