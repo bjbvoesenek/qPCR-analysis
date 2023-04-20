@@ -4,7 +4,7 @@
  * Web wrapper for Bas Voesenek's qPCR analysis script.
  *
  * Created     : 2023-03-22
- * Modified    : 2023-04-14
+ * Modified    : 2023-04-20
  *
  * Copyright   : 2023 Leiden University Medical Center; http://www.LUMC.nl/
  * Programmer  : Ivo F.A.C. Fokkema <I.F.A.C.Fokkema@LUMC.nl>
@@ -16,6 +16,10 @@ require ROOT_PATH . 'inc-lib.php';
 define('DATA_PATH', ROOT_PATH . 'data/');
 
 $sVersion = getVersion();
+// We link to the manual based on the first two numbers, to not have to create
+//  tags and not always have to adjust the version in the Python script.
+$aVersion = explode('.', $sVersion);
+$sVersionShort = implode('.', array_slice($aVersion, 0, 2));
 
 // Find out if we're using SSL.
 if ((!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] == 'https') || (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] != 'off') || !empty($_SERVER['SSL_PROTOCOL'])) {
@@ -91,6 +95,8 @@ if ($sError) {
             After this, the qPCR analysis will start.
             Note, this process will take a while, but should be finished within a minute.
             When done, you will receive a zipped archive containing all resulting files.
+            <BR><BR>
+            For more information about this software, please see <a href="https://github.com/bjbvoesenek/qPCR-analysis/blob/v<?= $sVersionShort; ?>.0/README.md">our manual</a>.
         </div>
         <!-- Placeholder for errors. -->
         <div class="alert alert-danger mb-3 d-none" role="alert"></div>
