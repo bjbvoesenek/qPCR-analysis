@@ -3,7 +3,7 @@
 Script for automating the analysis of qPCR data
 """
 
-__version_info__ = ('2','0','0')
+__version_info__ = ('2','0','1')
 __version__ = '.'.join(__version_info__)
 
 #%% Check user input
@@ -138,6 +138,14 @@ for n in range(0,len(primer_names)):
 unique_primers = primer_names.unique()
 unique_cell_lines = cell_lines.unique()
 
+# Remove MQ from control line options
+unique_cell_lines_MQ_removed = unique_cell_lines
+if 'h2o' in unique_cell_lines_MQ_removed: unique_cell_lines_MQ_removed = unique_cell_lines_MQ_removed[unique_cell_lines_MQ_removed != 'h2o']
+if 'H2O' in unique_cell_lines_MQ_removed: unique_cell_lines_MQ_removed = unique_cell_lines_MQ_removed[unique_cell_lines_MQ_removed != 'H2O']
+if 'mq' in unique_cell_lines_MQ_removed: unique_cell_lines_MQ_removed = unique_cell_lines_MQ_removed[unique_cell_lines_MQ_removed != 'mq']
+if 'MQ' in unique_cell_lines_MQ_removed: unique_cell_lines_MQ_removed = unique_cell_lines_MQ_removed[unique_cell_lines_MQ_removed != 'MQ']
+  
+
 #%% Store names of cell lines and primers in .txt files if user only provides Excel sheet
 
 if extract_data:
@@ -149,12 +157,12 @@ if extract_data:
     os.mkdir('Input')
 
     # Save names of used cell lines in .txt file
-    sorted_unique_cell_lines = natsorted(unique_cell_lines)
+    sorted_unique_cell_lines_MQ_removed = natsorted(unique_cell_lines_MQ_removed)
     with open("Input/Cell_lines.txt", "w") as txt_file:
-        for line in sorted_unique_cell_lines:
+        for line in sorted_unique_cell_lines_MQ_removed:
             txt_file.write(line + "\n")
 
-    # Save names of used cell lines in .txt file
+    # Save names of used primers in .txt file
     sorted_unique_primers = natsorted(unique_primers)
     with open("Input/Genes.txt", "w") as txt_file:
         for line in sorted_unique_primers:
@@ -164,7 +172,7 @@ if extract_data:
         "Successfully stored all cell lines and genes from the input to text files.\n" +
         "Please select your housekeeping genes and control cell lines and use --genes and --controls to pass them to this program.\n" +
         "E.g.,\n" +
-        "python3 " + __file__[len(os.getcwd())+1:] + " --input " + args['input'][0] + " --genes " + sorted_unique_primers[0] + " --controls " + sorted_unique_cell_lines[0] + "\n"
+        "python3 " + __file__[len(os.getcwd())+1:] + " --input " + args['input'][0] + " --genes " + sorted_unique_primers[0] + " --controls " + sorted_unique_cell_lines_MQ_removed[0] + "\n"
     )
     # Exit script. User now has to select housekeeping genes and control cell lines in web-interface
     sys.exit(0)
@@ -292,14 +300,19 @@ elif qPCR_system == 'BioRad':
     df_Ct = data[['Cq', 'Sample names']].copy()
     df_Ct = df_Ct.rename(columns={'Cq' : 'Ct value', 'Sample names' : 'Sample'})
 
-    # Remove Mq/H2O samples, as those are empty
-    for i in range(0,df_Ct.shape[0]):
-        if df_Ct.loc[i,'Sample'].partition('_')[0] == 'mq':
-            df_Ct = df_Ct.drop([i])
-    df_Ct = df_Ct.reset_index(drop=True)
-    unique_cell_lines = unique_cell_lines[unique_cell_lines !='mq']
-    unique_cell_lines = unique_cell_lines[unique_cell_lines !='MQ']
-    nr_samples = nr_samples - 1
+# Remove Mq/H2O samples, as those are empty
+for i in range(0,df_Ct.shape[0]):
+    if df_Ct.loc[i,'Sample'].partition('_')[0] == 'h2o':
+        df_Ct = df_Ct.drop([i])
+    elif df_Ct.loc[i,'Sample'].partition('_')[0] == 'H2O':
+        df_Ct = df_Ct.drop([i])
+    elif df_Ct.loc[i,'Sample'].partition('_')[0] == 'mq':
+        df_Ct = df_Ct.drop([i])
+    elif df_Ct.loc[i,'Sample'].partition('_')[0] == 'MQ':
+        df_Ct = df_Ct.drop([i])
+df_Ct = df_Ct.reset_index(drop=True)
+unique_cell_lines = unique_cell_lines_MQ_removed
+nr_samples = nr_samples - 1
 
 # Make df with replicates on one row
 replicates_sorted = pd.DataFrame(index=range(nr_samples * nr_primersets),columns=range(nr_replicates + 1))
@@ -430,16 +443,6 @@ for index, row in ddCt_df.iterrows():
 rel_ddCt_df.columns = original_col_names
 rel_ddCt_df.to_excel("Data/Relative_expression_values.xlsx")
 
-# Remove H2O sample before plotting
-if 'mq' in rel_ddCt_df.index:
-    rel_ddCt_df = rel_ddCt_df.drop('mq')
-elif 'MQ' in rel_ddCt_df.index:
-    rel_ddCt_df = rel_ddCt_df.drop('MQ')
-elif 'h2o' in rel_ddCt_df.index:
-    rel_ddCt_df = rel_ddCt_df.drop('h2o')
-elif 'H2O' in rel_ddCt_df.index:
-    rel_ddCt_df = rel_ddCt_df.drop('H2O')
-
 ## Plot relative ddCt values
 color_list = [''] * rel_ddCt_df.shape[0]
 subplot_number = 1
@@ -492,7 +495,7 @@ if qPCR_system == 'LinRegPCR':
     df_primer_eff = df_primer_eff[df_primer_eff.Cell_line != 'H2O']
 
     # Make df with primersets per row
-    primers_sorted = pd.DataFrame(index=range(nr_primersets),columns=range(nr_replicates * (nr_samples - 1) + 1))
+    primers_sorted = pd.DataFrame(index=range(nr_primersets),columns=range(nr_replicates * nr_samples + 1))
     row_counter = 0
 
     # Sort data, replicates in the same row
@@ -500,7 +503,7 @@ if qPCR_system == 'LinRegPCR':
         primers_sorted.iloc[row_counter,0] = i
         primer_df_temp = df_primer_eff[df_primer_eff['Primer'] == i]
         temp_primer_mean = primer_df_temp['Individual primer efficiency'].mean()
-        primers_sorted.iloc[row_counter, 1:nr_replicates * (nr_samples-1) + 1] = primer_df_temp['Individual primer efficiency'].tolist()
+        primers_sorted.iloc[row_counter, 1:nr_replicates * nr_samples + 1] = primer_df_temp['Individual primer efficiency'].tolist()
         primers_sorted.loc[row_counter, 'Mean'] = temp_primer_mean
         row_counter = row_counter + 1
 
@@ -512,7 +515,7 @@ if qPCR_system == 'LinRegPCR':
     plt.axhline(y=1.8, color='k', ls='--')
 
     for i in range(len(unique_primers)):
-       ax.scatter([i] * nr_replicates * (nr_samples-1), primers_sorted.iloc[i,1:nr_replicates * (nr_samples-1) + 1].values.tolist(), marker='o', c='k', s=5)
+       ax.scatter([i] * nr_replicates * nr_samples, primers_sorted.iloc[i,1:nr_replicates * nr_samples + 1].values.tolist(), marker='o', c='k', s=5)
 
     plt.savefig('Figures/Primer_efficiency.pdf', bbox_inches='tight')
 
