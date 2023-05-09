@@ -448,7 +448,7 @@ color_list = [''] * rel_ddCt_df.shape[0]
 subplot_number = 1
 plt.figure(figsize = (5*size_subplots,5*size_subplots))
 plt.subplots_adjust(hspace = 0.5, wspace = 0.3)
-y_max = max(rel_ddCt_df.max()) * 1.1
+# y_max = max(rel_ddCt_df.max()) * 1.1     # y-axis size calculated per graph
 
 # Loop over unique primers and plot Ct values as bar graph
 for i in range(0,len(unique_primers)):
@@ -470,7 +470,7 @@ for i in range(0,len(unique_primers)):
 
     plt.bar(temp_samples, temp_values, color=color_list, alpha=0.8)
     plt.xticks(rotation='vertical')
-    plt.ylim(0,y_max)
+    # plt.ylim(0,y_max)
     plt.title(unique_primers[i])
 
 plt.savefig('Figures/Relative_expression_values.pdf', bbox_inches='tight')
