@@ -210,7 +210,7 @@ nr_replicates = int(nr_replicates)
 rows = nr_samples
 columns = nr_primersets * nr_replicates
 
-plt.figure(figsize = (9*columns,8 * rows))
+plt.figure(figsize = (5*columns,4 * rows))
 plt.subplots_adjust(hspace = 0.5, wspace = 0.3)
 #plt.suptitle('Melting curves', fontsize = 100)
 
@@ -231,7 +231,7 @@ if qPCR_system == 'LinRegPCR':
         y = df_for_plotting.loc[index[i]]
         plt.plot(x,y)
         plt.ylim(0,max_yvalue)
-        ax.set_title(sample_names[index[i]], fontsize = 30)
+        ax.set_title(sample_names[index[i]], fontsize = 15)
         name_counter = name_counter + 1
 
     plt.savefig('Figures/qPCR_plots_sorted.pdf', bbox_inches='tight')
@@ -255,7 +255,7 @@ if 'Melting curves' in user_wb.sheetnames:
         x_melting = df_melting['Temperature']
         del df_melting['Temperature']
 
-    plt.figure(figsize = (9*columns,8 * rows))
+    plt.figure(figsize = (5*columns, 4*rows))
     plt.subplots_adjust(hspace = 0.5, wspace = 0.3)
     #plt.suptitle('Melting curves', fontsize = 100)
 
@@ -271,7 +271,7 @@ if 'Melting curves' in user_wb.sheetnames:
         y = df_melting[df_melting.columns[index[i]]]
         plt.plot(x_melting,y)
         plt.ylim(-0.5,y_max)
-        ax.set_title(sample_names[index[i]], fontsize = 30)
+        ax.set_title(sample_names[index[i]], fontsize = 15)
         name_counter = name_counter + 1
         index_number += 1
 
