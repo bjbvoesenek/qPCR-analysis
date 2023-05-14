@@ -193,7 +193,7 @@ for cell_line in control:
         print("Error: The provided control '" + cell_line + "' could not be found in your data. Check if it's named correctly.\n")
         sys.exit(6)
 
-#%% Plot qPCR plots
+#%% Plot qPCR amplification plots
 
 # Create directories to store plots and data
 os.mkdir('Figures')
@@ -291,12 +291,20 @@ if qPCR_system == 'LinRegPCR':
 
     df_compact = pd.read_excel(input_file, sheet_name='Data_compact')
 
-    df_Ct = df_compact.iloc[3:3+len(sample_names), 4]
+    # Depending on LinRegPCR version, Cq values are in different columns with different names
+    # Find column containing Cq values
+    df_compact_columns = df_compact.columns.tolist()
+    for name in df_compact_columns:
+        if name.startswith('Chemistry'):
+            Cq_column_name = name
+    Cq_index = df_compact_columns.index(Cq_column_name)
+
+    df_Ct = df_compact.iloc[3:3+len(sample_names), Cq_index]
     df_Ct = df_Ct.to_frame()
     df_Ct = df_Ct.reset_index()
     df_Ct['Sample'] = sample_names
     del df_Ct['index']
-    df_Ct = df_Ct.rename(columns={'Chemistry: DNA binding dye (non-saturating' : 'Ct value', 'Sample' : 'Sample'})
+    df_Ct = df_Ct.rename(columns={Cq_column_name : 'Ct value', 'Sample' : 'Sample'})
     df_Ct['Ct value'] = df_Ct['Ct value'].astype(float)
 
 elif qPCR_system == 'BioRad':
