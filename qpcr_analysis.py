@@ -4,7 +4,7 @@
 Script for automating the analysis of qPCR data
 """
 
-__version_info__ = ('2','0','1')
+__version_info__ = ('2','2','0')
 __version__ = '.'.join(__version_info__)
 
 #%% Check user input
