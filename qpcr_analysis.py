@@ -1,9 +1,10 @@
+#%%
 # -*- coding: utf-8 -*-
 """
 Script for automating the analysis of qPCR data
 """
 
-__version_info__ = ('2','1','0')
+__version_info__ = ('2','2','0')
 __version__ = '.'.join(__version_info__)
 
 #%% Check user input
@@ -400,7 +401,7 @@ plt.savefig('Figures/Average_Ct_bargraph.pdf', bbox_inches='tight')
 avg_Ct_df.index = temp_samples
 avg_Ct_df.to_excel("Data/Average_Ct_values.xlsx")
 
-#%% Calculate relative expression (variable number of housekeeping genes)
+#%% Calculate relative expression, not normalized (2^-(dCt)))
 
 from statistics import mean
 
@@ -427,6 +428,53 @@ for index, row in avg_Ct_df.iterrows():#dCt_df.iterrows():
 # Average control lines to calculate ddCt
 dCt_df.loc['Control average'] = dCt_df.loc[control,:].mean()
 
+# Relative expression (2^-(dCt))
+rel_expression_df = pd.DataFrame()
+
+for i in range(0, len(unique_primers)):
+    for index, row in dCt_df.iterrows():
+        rel_expression_df.loc[index, unique_primers_analysis[i]] = 2 ** -(dCt_df.loc[index, unique_primers_analysis[i]])
+
+# Save relative expression values to excel
+rel_expression_df.columns = original_col_names
+rel_expression_df.to_excel("Data/Relative_expression_values.xlsx")
+
+# Plot relative expression values
+color_list = [''] * rel_expression_df.shape[0]
+subplot_number = 1
+plt.figure(figsize = (5*size_subplots,5*size_subplots))
+plt.subplots_adjust(hspace = 0.5, wspace = 0.3)
+# y_max = max(rel_expression_df.max()) * 1.1     # y-axis size calculated per graph
+
+# Loop over unique primers and plot Ct values as bar graph
+for i in range(0,len(unique_primers)):
+    ax = plt.subplot(size_subplots, size_subplots, subplot_number)
+    subplot_number += 1
+
+    temp_values = rel_expression_df[unique_primers[i]].tolist()
+    temp_samples = rel_expression_df.index
+    temp_samples = temp_samples.tolist()
+
+    for j in range(0,len(temp_samples)):
+        temp_samples[j] = temp_samples[j].replace('_' + unique_primers[i], "")
+
+    for k in range(0,len(temp_samples)):
+        if temp_samples[k] in control:      # Control lines will have gray bars
+            color_list[k] = 'gray'
+        elif temp_samples[k] == 'Control average':
+            color_list[k] = 'black'
+        else:                                                                       # Investigated lines will have blue bars
+            color_list[k] = 'royalblue'
+
+    plt.bar(temp_samples, temp_values, color=color_list, alpha=0.8)
+    plt.xticks(rotation='vertical')
+    # plt.ylim(0,y_max)
+    plt.title(unique_primers[i])
+
+plt.savefig('Figures/Relative_expression_values.pdf', bbox_inches='tight')
+
+#%% Calculate normalized relative gene expression ((2^-(ddCt)))
+
 # subtract dCt of gene of interest from dCt of control average
 ddCt_df = pd.DataFrame()
 
@@ -444,7 +492,7 @@ for index, row in ddCt_df.iterrows():
 
 # Save relative ddCt values to excel
 rel_ddCt_df.columns = original_col_names
-rel_ddCt_df.to_excel("Data/Relative_expression_values.xlsx")
+rel_ddCt_df.to_excel("Data/Normalized_relative_expression_values.xlsx")
 
 ## Plot relative ddCt values
 color_list = [''] * rel_ddCt_df.shape[0]
@@ -466,8 +514,10 @@ for i in range(0,len(unique_primers)):
         temp_samples[j] = temp_samples[j].replace('_' + unique_primers[i], "")
 
     for k in range(0,len(temp_samples)):
-        if temp_samples[k] in control or temp_samples[k] == 'Control average':      # Control lines will have gray bars
+        if temp_samples[k] in control:      # Control lines will have gray bars
             color_list[k] = 'gray'
+        elif temp_samples[k] == 'Control average':
+            color_list[k] = 'black'
         else:                                                                       # Investigated lines will have blue bars
             color_list[k] = 'royalblue'
 
@@ -476,7 +526,7 @@ for i in range(0,len(unique_primers)):
     # plt.ylim(0,y_max)
     plt.title(unique_primers[i])
 
-plt.savefig('Figures/Relative_expression_values.pdf', bbox_inches='tight')
+plt.savefig('Figures/Normalized_relative_expression_values.pdf', bbox_inches='tight')
 
 #%% Plot primer efficiency
 if qPCR_system == 'LinRegPCR':
