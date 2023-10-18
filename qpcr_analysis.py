@@ -4,7 +4,7 @@
 Script for automating the analysis of qPCR data
 """
 
-__version_info__ = ('2','2','0')
+__version_info__ = ('2','2','1')
 __version__ = '.'.join(__version_info__)
 
 #%% Check user input
@@ -238,7 +238,7 @@ if qPCR_system == 'LinRegPCR':
         ax.set_title(sample_names[index[i]], fontsize = 15)
         name_counter += 1
 
-    plt.savefig('Figures/qPCR_plots_sorted.pdf', bbox_inches='tight')
+    plt.savefig('Figures/Amplification_plots_sorted.pdf', bbox_inches='tight')
 
 #%% Plot melting curves
 
@@ -250,7 +250,7 @@ if 'Melting curves' in user_wb.sheetnames:
             if col.startswith('Unnamed'):
                 del df_melting[col]
 
-        x_melting = df_melting[df_melting.columns[index[0]]]
+        x_melting = df_melting[df_melting.columns[0]]
 
         for col in df_melting.columns:
             if col.startswith('X'):
