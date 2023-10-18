@@ -238,7 +238,7 @@ if qPCR_system == 'LinRegPCR':
         ax.set_title(sample_names[index[i]], fontsize = 15)
         name_counter += 1
 
-    plt.savefig('Figures/qPCR_plots_sorted.pdf', bbox_inches='tight')
+    plt.savefig('Figures/Amplification_plots_sorted.pdf', bbox_inches='tight')
 
 #%% Plot melting curves
 
