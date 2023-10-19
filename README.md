@@ -173,8 +173,8 @@ In case you want to remove outliers, delete the Ct value of the sample in the
 
 If you exported melting curves from the LightCycler 480, copy the content
  of the .txt file to your Excel file in a new sheet named "Melting curves".
-Delete the columns (both X and Sample) of empty wells. Do not forget to do
-the 'Tm calling' in the LightCycler 480 software.
+Delete the columns (both X and Sample) of empty wells.
+Do not forget to do the 'Tm calling' in the LightCycler 480 software.
 
 ![](doc-images/LinReg_melting_curves.png)
 
