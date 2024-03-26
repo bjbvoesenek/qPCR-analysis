@@ -1,10 +1,9 @@
-#%%
 # -*- coding: utf-8 -*-
 """
 Script for automating the analysis of qPCR data
 """
 
-__version_info__ = ('2','2','1')
+__version_info__ = ('2','2','2')
 __version__ = '.'.join(__version_info__)
 
 #%% Check user input
@@ -77,6 +76,9 @@ elif 'Data' in user_wb.sheetnames:
     data = pd.read_excel(input_file, sheet_name='Data')
     if pd.Series(['input.txt', 'Text']).isin(data.columns).all(): # Second check, should return True if LinRegPCR was used
         qPCR_system = 'LinRegPCR'
+    elif pd.Series(['Cycle']).isin(data.columns).all():
+        qPCR_system = 'BioRad_LinRegPCR'
+        data = data.reset_index(drop=True)
     else:
         sys.exit('Error: Not sure whether this is a BioRad or LinRegPCR output file. Check the names of the sheets and columns and try again.\nSee manual for more information.\n')
 else:
@@ -122,6 +124,9 @@ elif qPCR_system == 'BioRad':
         data.loc[i,'Sample names'] = '_'.join(str(e) for e in temp_sample_name)
 
     sample_names = data['Sample names']
+    
+elif qPCR_system == 'BioRad_LinRegPCR':
+    sample_names = data['Cycle']
 
 index = index_natsorted(sample_names)
 sample_names_df = sample_names.to_frame()
@@ -311,6 +316,29 @@ if qPCR_system == 'LinRegPCR':
 elif qPCR_system == 'BioRad':
     df_Ct = data[['Cq', 'Sample names']].copy()
     df_Ct = df_Ct.rename(columns={'Cq' : 'Ct value', 'Sample names' : 'Sample'})
+    
+elif qPCR_system == 'BioRad_LinRegPCR':
+    if 'Data_compact' not in user_wb.sheetnames:
+        print('Error: Sheet [Data_compact] not found in your input file. Make sure the sheets in your excel workbook are named correctly.\nSee the manual for more information.\n')
+        sys.exit(7)
+
+    df_compact = pd.read_excel(input_file, sheet_name='Data_compact')
+
+    # Depending on LinRegPCR version, Cq values are in different columns with different names
+    # Find column containing Cq values
+    df_compact_columns = df_compact.columns.tolist()
+    for name in df_compact_columns:
+        if name.startswith('Chemistry'):
+            Cq_column_name = name
+    Cq_index = df_compact_columns.index(Cq_column_name)
+
+    df_Ct = df_compact.iloc[3:3+len(sample_names), Cq_index]
+    df_Ct = df_Ct.to_frame()
+    df_Ct = df_Ct.reset_index()
+    df_Ct['Sample'] = sample_names
+    del df_Ct['index']
+    df_Ct = df_Ct.rename(columns={Cq_column_name : 'Ct value', 'Sample' : 'Sample'})
+    df_Ct['Ct value'] = df_Ct['Ct value'].astype(float)
 
 # Remove Mq/H2O samples, as those are empty
 for i in range(0,df_Ct.shape[0]):
@@ -568,13 +596,14 @@ if qPCR_system == 'LinRegPCR':
     fig, ax = plt.subplots()
     ax.bar(unique_primers, primers_sorted['Mean'], alpha=0.5)
     ax.tick_params(axis='x', labelrotation=90)
-    ax.set_ylim(0,2)
+    ax.set_ylim(0,2.5)
     plt.axhline(y=1.8, color='k', ls='--')
+    plt.axhline(y=2.2, color='k', ls='--')
 
     for i in range(len(unique_primers)):
        ax.scatter([i] * nr_replicates * nr_samples, primers_sorted.iloc[i,1:nr_replicates * nr_samples + 1].values.tolist(), marker='o', c='k', s=5)
 
-    plt.savefig('Figures/Primer_efficiency.pdf', bbox_inches='tight')
+    plt.savefig('Figures/PCR_efficiency.pdf', bbox_inches='tight')
 
 #%% Quit script
 # Indicate a successful ending of the script. The web wrapper requires this, as the script can generate output
