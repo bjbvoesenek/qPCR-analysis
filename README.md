@@ -1,4 +1,4 @@
-# qPCR-analysis 2.2.1
+# qPCR-analysis 2.2.2
 
 The qPCR analysis software is designed to conveniently and intuitively plot
  amplification plots and melting curves.
